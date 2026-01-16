@@ -172,7 +172,7 @@ const DoubleSalesCalculator = () => {
       
       const element = pdfRef.current;
       const footerEl = element.querySelector('#pdf-footer');
-      const sections = Array.from(element.querySelectorAll('.pdf-section')); // без футера, футер отдельно
+      const pieces = Array.from(element.querySelectorAll('.pdf-piece'));
 
       
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -185,8 +185,8 @@ const DoubleSalesCalculator = () => {
       let pageNum = 1;
       const pageContents = [[]];
       
-      for (let i = 0; i < sections.length; i++) {
-        const section = sections[i];
+      for (let i = 0; i < pieces.length; i++) {
+        const section = pieces[i];
         const canvas = await html2canvas(section, { 
           scale: 2, 
           useCORS: true, 
@@ -342,7 +342,7 @@ if (imgHeight <= (maxPageY - margin)) {
         
         pdf.setFontSize(9);
         pdf.setTextColor(150, 150, 150);
-        pdf.text((p + 1) + ' / ' + totalPages, pdfWidth - margin, pdfHeight - 7, { align: 'right' });
+      pdf.text((p + 1) + ' / ' + totalPages, pdfWidth - margin, pdfHeight - 10, { align: 'right' });
       }
       
       pdf.save('Double_Sales_Report.pdf');
@@ -368,20 +368,39 @@ if (imgHeight <= (maxPageY - margin)) {
     const showUpsell = results.p.upsellPrice > 0;
     const showMaxSales = results.p.maxFlagshipSales !== 999;
     
-    const Section = ({ title, children }) => (
-      <div className="pdf-section" style={{ marginBottom: 12, backgroundColor: 'white' }}>
-        <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>{title}</div>
+    const Piece = ({ children, style }) => (
+      <div className="pdf-piece" style={style}>
+        {children}
+      </div>
+    );
+  
+  const Section = ({ title, children }) => (
+      <div style={{ marginBottom: 12, backgroundColor: 'white' }}>
+        <Piece style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>
+          {title}
+        </Piece>
         {children}
       </div>
     );
 
     
     const Row = ({ label, value, bold, highlight }) => (
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 16px', backgroundColor: highlight ? COLORS.primary : COLORS.accent, color: highlight ? 'white' : '#333', borderBottom: '1px solid white', fontSize: 12 }}>
+      <Piece
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          padding: '8px 16px',
+          backgroundColor: highlight ? COLORS.primary : COLORS.accent,
+          color: highlight ? 'white' : '#333',
+          borderBottom: '1px solid white',
+          fontSize: 12
+        }}
+      >
         <span style={{ fontWeight: bold ? 'bold' : 'normal' }}>{label}</span>
         <span style={{ fontWeight: 'bold' }}>{value}</span>
-      </div>
+      </Piece>
     );
+
 
       const chunk = (arr, size) => {
         const res = [];
@@ -488,16 +507,17 @@ if (imgHeight <= (maxPageY - margin)) {
             {pages.map((page, idx) => (
               <Section key={idx} title={idx === 0 ? 'РАСХОДЫ' : 'РАСХОДЫ (продолжение)'}>
                 {page.map((it, i) => {
-                  if (it.type === 'sub') {
-                    return (
-                      <div
-                        key={`sub-${i}`}
-                        style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11, marginTop: i === 0 ? 0 : 5 }}
-                      >
-                        {it.text}
-                      </div>
-                    );
-                  }
+               if (it.type === 'sub') {
+          return (
+            <Piece
+              key={`sub-${i}`}
+              style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11, marginTop: i === 0 ? 0 : 5, backgroundColor: 'white' }}
+            >
+              {it.text}
+            </Piece>
+          );
+        }
+
                   return (
                     <Row
                       key={`row-${i}`}
@@ -549,7 +569,7 @@ if (imgHeight <= (maxPageY - margin)) {
         </div>
         
         {/* Footer */}
-        <div id="pdf-footer" style={{ marginTop: 40, paddingTop: 20, borderTop: `2px solid ${COLORS.primary}`, textAlign: 'center' }}>
+          <div id="pdf-footer" style={{ marginTop: 0, paddingTop: 14, borderTop: `2px solid ${COLORS.primary}`, textAlign: 'center' }}>
           <div style={{ color: '#666', fontSize: 12, marginBottom: 5 }}>Рассчитано с помощью калькулятора Double Sales</div>
           <a href="https://julietsapova.com/" style={{ color: COLORS.primary, fontSize: 12, fontWeight: 'bold', textDecoration: 'none' }}>@julie_tsapova | julietsapova.com</a>
         </div>
