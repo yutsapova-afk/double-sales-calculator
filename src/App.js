@@ -177,7 +177,6 @@ const DoubleSalesCalculator = () => {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const margin = 10;
-      const usableHeight = pdfHeight - margin * 2;
       
       let currentY = margin;
       let pageNum = 1;
