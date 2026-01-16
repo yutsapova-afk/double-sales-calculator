@@ -9,7 +9,6 @@ const TabBtn = ({ id, activeTab, setActiveTab, icon: Icon, label }) => (
   </button>
 );
 
-
 const Input = ({ label, value, onChange, suffix, hint }) => (
   <div className="space-y-1">
     <label className="text-sm font-medium" style={{ color: COLORS.primary }}>{label}</label>
@@ -76,157 +75,275 @@ const CalculateButton = ({ onClick, calculated }) => (
 );
 
 // PDF Report Component
-const PDFReport = React.forwardRef(({ results, fixedExpenses, variableExpenses, startupExpenses, num, formatCur, formatNum }, ref) => {
-  if (!results) return null;
+// PDF Report Component
+const PDFReport = React.forwardRef(
+  ({ results, fixedExpenses, variableExpenses, startupExpenses, num, formatCur, formatNum }, ref) => {
+    if (!results) return null;
 
-  const nonZeroFixed = fixedExpenses.filter(e => num(e.amount || '0') > 0);
-  const nonZeroVar = variableExpenses.filter(e => num(e.percent || '0') > 0);
-  const nonZeroStartup = startupExpenses.filter(e => num(e.amount || '0') > 0);
-  const showUpsell = results.p.upsellPrice > 0;
-  const showMaxSales = results.p.maxFlagshipSales !== 999;
+    const nonZeroFixed = fixedExpenses.filter((e) => num(e.amount || '0') > 0);
+    const nonZeroVar = variableExpenses.filter((e) => num(e.percent || '0') > 0);
+    const nonZeroStartup = startupExpenses.filter((e) => num(e.amount || '0') > 0);
 
-  const Section = ({ title, children }) => (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '12px 16px', fontSize: 16, fontWeight: 'bold', marginBottom: 2 }}>
-        {title}
-      </div>
-      {children}
-    </div>
-  );
+    const showUpsell = results.p.upsellPrice > 0;
+    const showMaxSales = results.p.maxFlagshipSales !== 999;
 
-  const Row = ({ label, value, bold, highlight }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px', backgroundColor: highlight ? COLORS.primary : COLORS.accent, color: highlight ? 'white' : '#333', borderBottom: '1px solid white' }}>
-      <span style={{ fontWeight: bold ? 'bold' : 'normal' }}>{label}</span>
-      <span style={{ fontWeight: 'bold' }}>{value}</span>
-    </div>
-  );
-
-  const ScenarioBlock = ({ name, data, color }) => (
-    <div style={{ marginBottom: 15 }}>
-      <div style={{ backgroundColor: color, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>{name}</div>
-      <Row label="Продаж ТР за год" value={Math.round(data.totalTR).toString()} />
-      <Row label="Продаж ФЛ за год" value={data.totalFL.toFixed(1)} />
-      <Row label="Выручка за год" value={formatCur(data.totalRev)} bold />
-      <Row label="Чистая прибыль" value={formatCur(data.yearProfit)} bold />
-    </div>
-  );
-
-  const pageStyle = {
-    padding: 40,
-    minHeight: 1100,
-    boxSizing: 'border-box',
-    backgroundColor: '#fff',
-    fontFamily: 'Arial, sans-serif',
-    fontSize: 14,
-    color: '#333',
-  };
-
-  return (
-    <div ref={ref} style={{ width: 794, backgroundColor: '#fff' }}>
-      {/* ===== PAGE 1 ===== */}
-      <div className="pdf-page" style={{ ...pageStyle }}>
-        <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '30px 20px', textAlign: 'center', marginBottom: 30 }}>
-          <div style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 5 }}>DOUBLE SALES</div>
-          <div style={{ fontSize: 16, opacity: 0.9 }}>Система продаж</div>
+    const Section = ({ title, children }) => (
+      <div style={{ marginBottom: 20 }}>
+        <div
+          style={{
+            backgroundColor: COLORS.primary,
+            color: 'white',
+            padding: '12px 16px',
+            fontSize: 16,
+            fontWeight: 'bold',
+            marginBottom: 2,
+          }}
+        >
+          {title}
         </div>
-
-        <Section title="ПРОДУКТЫ">
-          <Row label="Цена трипваера" value={formatCur(results.p.tripwirePrice)} />
-          <Row label="Цена флагмана" value={formatCur(results.p.flagshipPrice)} />
-          {showUpsell && <Row label="Допродажи" value={formatCur(results.p.upsellPrice)} />}
-          {showMaxSales && <Row label="Мест на ФЛ/мес" value={results.p.maxFlagshipSales.toString()} />}
-        </Section>
-
-        <Section title="ОХВАТЫ">
-          <Row label="Средний охват публикации" value={formatNum(results.r.avgReelsReach)} />
-          <Row label="Публикаций в неделю" value={results.r.reelsPerWeek.toString()} />
-          <Row label="Рост охватов/мес" value={results.r.monthlyGrowth + '%'} />
-        </Section>
-
-        <Section title="КОНВЕРСИИ ВОРОНКИ">
-          <Row label="Контент → переход в бот" value={(results.conv.reelsToBot * 100).toFixed(1) + '%'} />
-          <Row label="Бот → просмотр ЛМ" value={(results.conv.botToLM * 100).toFixed(0) + '%'} />
-          <Row label="ЛМ → покупка ТР" value={(results.conv.lmToTR * 100).toFixed(1) + '%'} />
-          <Row label="ТР → заявка на ФЛ" value={(results.conv.trToApplication * 100).toFixed(0) + '%'} />
-          <Row label="Заявка → покупка ФЛ" value={(results.conv.applicationToFL * 100).toFixed(0) + '%'} />
-          {results.conv.lmToApplicationDirect > 0 && (
-            <Row label="ЛМ/Контент → заявка напрямую" value={(results.conv.lmToApplicationDirect * 100).toFixed(1) + '%'} />
-          )}
-        </Section>
-
-        <Section title="РЕЗУЛЬТАТЫ (в неделю)">
-          <Row label="Охватов" value={formatNum(results.weeklyReach)} />
-          <Row label="Подписок в бот" value={results.weeklyBotSubs.toFixed(1)} />
-          <Row label="Просмотров ЛМ" value={results.weeklyLMViews.toFixed(1)} />
-          <Row label="Продаж ТР" value={results.weeklyTRSales.toFixed(2)} />
-          <Row label="Заявок на ФЛ" value={results.weeklyApps.toFixed(2)} />
-          <Row label="Продаж ФЛ" value={results.weeklyFLSales.toFixed(3)} />
-          <Row label="Выручка в неделю" value={formatCur(results.weeklyRevTotal)} bold highlight />
-          <Row label="Выручка в месяц" value={formatCur(results.monthlyRev)} bold highlight />
-          <Row label="Прибыль в месяц" value={formatCur(results.monthlyProfit)} bold highlight />
-        </Section>
-
-        <Section title="СКОЛЬКО НУЖНО ДЛЯ ЦЕЛЕЙ">
-          {[
-            { name: 'Первая продажа ТР', reach: results.reachFirstTR },
-            { name: 'Первая продажа ФЛ', reach: results.reachFirstFL },
-            { name: '30 заявок на ФЛ', reach: results.reach30Apps },
-            { name: '100 000 ₽', reach: results.reach100k },
-            { name: '1 000 000 ₽', reach: results.reach1M },
-          ].map((g, i) => {
-            const pubs = results.r.avgReelsReach > 0 ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach)) : 1;
-            const weeks = results.r.avgReelsReach > 0 && results.r.reelsPerWeek > 0 ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach / results.r.reelsPerWeek)) : 1;
-            return <Row key={i} label={g.name} value={`${formatNum(g.reach)} охв / ${pubs} публ / ${weeks} нед`} />;
-          })}
-        </Section>
+        {children}
       </div>
+    );
 
-      {/* ===== PAGE 2 ===== */}
-      <div className="pdf-page" style={{ ...pageStyle }}>
-        <Section title="РАСХОДЫ">
-          {nonZeroFixed.length > 0 && (
-            <>
-              <div style={{ padding: '8px 16px', fontWeight: 'bold', color: COLORS.primary }}>Постоянные/мес:</div>
-              {nonZeroFixed.map((e, i) => <Row key={i} label={e.name} value={formatCur(num(e.amount || '0'))} />)}
-            </>
-          )}
-          {nonZeroVar.length > 0 && (
-            <>
-              <div style={{ padding: '8px 16px', fontWeight: 'bold', color: COLORS.primary, marginTop: 10 }}>Переменные:</div>
-              {nonZeroVar.map((e, i) => <Row key={i} label={e.name} value={num(e.percent || '0') + '%'} />)}
-            </>
-          )}
-          {nonZeroStartup.length > 0 && (
-            <>
-              <div style={{ padding: '8px 16px', fontWeight: 'bold', color: COLORS.primary, marginTop: 10 }}>Стартовые:</div>
-              {nonZeroStartup.map((e, i) => <Row key={i} label={e.name} value={formatCur(num(e.amount || '0'))} />)}
-            </>
-          )}
-          <div style={{ marginTop: 10 }}>
-            <Row label="ИТОГО постоянные/мес" value={formatCur(results.totalFixed)} bold highlight />
-            <Row label="ИТОГО переменные" value={(results.totalVarPercent * 100).toFixed(1) + '%'} bold highlight />
-            <Row label="ИТОГО стартовые" value={formatCur(results.totalStartup)} bold highlight />
-            <Row label="Окупаемость" value={results.paybackWeeks === Infinity ? '—' : results.paybackWeeks + ' нед'} bold highlight />
+    const Row = ({ label, value, bold, highlight }) => (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          padding: '10px 16px',
+          backgroundColor: highlight ? COLORS.primary : COLORS.accent,
+          color: highlight ? 'white' : '#333',
+          borderBottom: '1px solid white',
+        }}
+      >
+        <span style={{ fontWeight: bold ? 'bold' : 'normal' }}>{label}</span>
+        <span style={{ fontWeight: 'bold' }}>{value}</span>
+      </div>
+    );
+
+    const ScenarioBlock = ({ name, data, color }) => (
+      <div style={{ marginBottom: 15 }}>
+        <div style={{ backgroundColor: color, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>
+          {name}
+        </div>
+        <Row label="Продаж ТР за год" value={String(Math.round(data.totalTR))} />
+        <Row label="Продаж ФЛ за год" value={data.totalFL.toFixed(1)} />
+        <Row label="Выручка за год" value={formatCur(data.totalRev)} bold />
+        <Row label="Чистая прибыль" value={formatCur(data.yearProfit)} bold />
+      </div>
+    );
+
+    // ====== Автопагинация расходов ======
+    // Мы превращаем расходы в плоский список "строк" и режем его на чанки
+    // Каждый чанк уходит на отдельную pdf-страницу
+    const buildExpenseLines = () => {
+      const lines = [];
+
+      if (nonZeroFixed.length > 0) {
+        lines.push({ kind: 'sub', text: 'Постоянные/мес:' });
+        nonZeroFixed.forEach((e) => lines.push({ kind: 'row', label: e.name, value: formatCur(num(e.amount || '0')) }));
+      }
+
+      if (nonZeroVar.length > 0) {
+        lines.push({ kind: 'sub', text: 'Переменные:' });
+        nonZeroVar.forEach((e) => lines.push({ kind: 'row', label: e.name, value: String(num(e.percent || '0')) + '%' }));
+      }
+
+      if (nonZeroStartup.length > 0) {
+        lines.push({ kind: 'sub', text: 'Стартовые:' });
+        nonZeroStartup.forEach((e) => lines.push({ kind: 'row', label: e.name, value: formatCur(num(e.amount || '0')) }));
+      }
+
+      // Итоги и окупаемость всегда в конце
+      lines.push({ kind: 'spacer' });
+      lines.push({ kind: 'row', label: 'ИТОГО постоянные/мес', value: formatCur(results.totalFixed), highlight: true, bold: true });
+      lines.push({
+        kind: 'row',
+        label: 'ИТОГО переменные',
+        value: (results.totalVarPercent * 100).toFixed(1) + '%',
+        highlight: true,
+        bold: true,
+      });
+      lines.push({ kind: 'row', label: 'ИТОГО стартовые', value: formatCur(results.totalStartup), highlight: true, bold: true });
+      lines.push({
+        kind: 'row',
+        label: 'Окупаемость',
+        value: results.paybackWeeks === Infinity ? '—' : String(results.paybackWeeks) + ' нед',
+        highlight: true,
+        bold: true,
+      });
+
+      return lines;
+    };
+
+    const chunkLines = (lines, perPage) => {
+      const chunks = [];
+      let current = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const item = lines[i];
+
+        // spacer не считаем как полноценную строку, но оставим место
+        const isSpacer = item.kind === 'spacer';
+        const currentCount = current.filter((x) => x.kind !== 'spacer').length;
+
+        // Если следующая строка не влезает, начинаем новую страницу
+        if (!isSpacer && currentCount >= perPage) {
+          chunks.push(current);
+          current = [];
+        }
+
+        current.push(item);
+      }
+
+      if (current.length > 0) chunks.push(current);
+      return chunks;
+    };
+
+    const expenseLines = buildExpenseLines();
+
+    // Важно: этот лимит подобран под твой текущий дизайн
+    // Если захочешь сделать плотнее или свободнее, меняется только число
+    const EXPENSE_ROWS_PER_PAGE = 26;
+
+    // Если расходов мало, будет 1 страница. Если много, будет 2, 3, 4 и так далее
+    const expenseChunks = chunkLines(expenseLines, EXPENSE_ROWS_PER_PAGE);
+
+    const pageStyle = {
+      padding: 40,
+      minHeight: 1100,
+      boxSizing: 'border-box',
+      backgroundColor: '#fff',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: 14,
+      color: '#333',
+    };
+
+    const renderExpenseChunk = (chunk, idx) => (
+      <Section title="РАСХОДЫ" key={'exp-section-' + idx}>
+        {chunk.map((item, i) => {
+          if (item.kind === 'sub') {
+            return (
+              <div
+                key={'sub-' + i}
+                style={{
+                  padding: '8px 16px',
+                  fontWeight: 'bold',
+                  color: COLORS.primary,
+                  marginTop: i === 0 ? 0 : 10,
+                }}
+              >
+                {item.text}
+              </div>
+            );
+          }
+
+          if (item.kind === 'spacer') {
+            return <div key={'sp-' + i} style={{ height: 10 }} />;
+          }
+
+          return (
+            <Row
+              key={'row-' + i}
+              label={item.label}
+              value={item.value}
+              bold={!!item.bold}
+              highlight={!!item.highlight}
+            />
+          );
+        })}
+      </Section>
+    );
+
+    return (
+      <div ref={ref} style={{ width: 794, backgroundColor: '#fff' }}>
+        {/* ===== PAGE 1 ===== */}
+        <div className="pdf-page" style={pageStyle}>
+          <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '30px 20px', textAlign: 'center', marginBottom: 30 }}>
+            <div style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 5 }}>DOUBLE SALES</div>
+            <div style={{ fontSize: 16, opacity: 0.9 }}>Система продаж</div>
           </div>
-        </Section>
 
-        <Section title="ПРОГНОЗ НА ГОД">
-          <ScenarioBlock name="СЦЕНАРИЙ: КОНСЕРВАТИВНЫЙ" data={results.scenarios.conservative} color="#F97316" />
-          <ScenarioBlock name="СЦЕНАРИЙ: РЕАЛИСТИЧНЫЙ" data={results.scenarios.realistic} color={COLORS.primary} />
-          <ScenarioBlock name="СЦЕНАРИЙ: ОПТИМИСТИЧНЫЙ" data={results.scenarios.optimistic} color="#22C55E" />
-        </Section>
+          <Section title="ПРОДУКТЫ">
+            <Row label="Цена трипваера" value={formatCur(results.p.tripwirePrice)} />
+            <Row label="Цена флагмана" value={formatCur(results.p.flagshipPrice)} />
+            {showUpsell && <Row label="Допродажи" value={formatCur(results.p.upsellPrice)} />}
+            {showMaxSales && <Row label="Мест на ФЛ/мес" value={String(results.p.maxFlagshipSales)} />}
+          </Section>
 
-        <div style={{ marginTop: 40, paddingTop: 20, borderTop: `2px solid ${COLORS.primary}`, textAlign: 'center' }}>
-          <div style={{ color: '#666', fontSize: 12, marginBottom: 5 }}>Рассчитано с помощью калькулятора Double Sales</div>
-          <a href="https://julietsapova.com/" style={{ color: COLORS.primary, fontSize: 12, fontWeight: 'bold', textDecoration: 'none' }}>
-            @julie_tsapova | julietsapova.com
-          </a>
+          <Section title="ОХВАТЫ">
+            <Row label="Средний охват публикации" value={formatNum(results.r.avgReelsReach)} />
+            <Row label="Публикаций в неделю" value={String(results.r.reelsPerWeek)} />
+            <Row label="Рост охватов/мес" value={results.r.monthlyGrowth + '%'} />
+          </Section>
+
+          <Section title="КОНВЕРСИИ ВОРОНКИ">
+            <Row label="Контент → переход в бот" value={(results.conv.reelsToBot * 100).toFixed(1) + '%'} />
+            <Row label="Бот → просмотр ЛМ" value={(results.conv.botToLM * 100).toFixed(0) + '%'} />
+            <Row label="ЛМ → покупка ТР" value={(results.conv.lmToTR * 100).toFixed(1) + '%'} />
+            <Row label="ТР → заявка на ФЛ" value={(results.conv.trToApplication * 100).toFixed(0) + '%'} />
+            <Row label="Заявка → покупка ФЛ" value={(results.conv.applicationToFL * 100).toFixed(0) + '%'} />
+            {results.conv.lmToApplicationDirect > 0 && (
+              <Row label="ЛМ/Контент → заявка напрямую" value={(results.conv.lmToApplicationDirect * 100).toFixed(1) + '%'} />
+            )}
+          </Section>
+
+          <Section title="РЕЗУЛЬТАТЫ (в неделю)">
+            <Row label="Охватов" value={formatNum(results.weeklyReach)} />
+            <Row label="Подписок в бот" value={results.weeklyBotSubs.toFixed(1)} />
+            <Row label="Просмотров ЛМ" value={results.weeklyLMViews.toFixed(1)} />
+            <Row label="Продаж ТР" value={results.weeklyTRSales.toFixed(2)} />
+            <Row label="Заявок на ФЛ" value={results.weeklyApps.toFixed(2)} />
+            <Row label="Продаж ФЛ" value={results.weeklyFLSales.toFixed(3)} />
+            <Row label="Выручка в неделю" value={formatCur(results.weeklyRevTotal)} bold highlight />
+            <Row label="Выручка в месяц" value={formatCur(results.monthlyRev)} bold highlight />
+            <Row label="Прибыль в месяц" value={formatCur(results.monthlyProfit)} bold highlight />
+          </Section>
+
+          <Section title="СКОЛЬКО НУЖНО ДЛЯ ЦЕЛЕЙ">
+            {[
+              { name: 'Первая продажа ТР', reach: results.reachFirstTR },
+              { name: 'Первая продажа ФЛ', reach: results.reachFirstFL },
+              { name: '30 заявок на ФЛ', reach: results.reach30Apps },
+              { name: '100 000 ₽', reach: results.reach100k },
+              { name: '1 000 000 ₽', reach: results.reach1M },
+            ].map((g, i) => {
+              const pubs = results.r.avgReelsReach > 0 ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach)) : 1;
+              const weeks =
+                results.r.avgReelsReach > 0 && results.r.reelsPerWeek > 0
+                  ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach / results.r.reelsPerWeek))
+                  : 1;
+              return <Row key={i} label={g.name} value={`${formatNum(g.reach)} охв / ${pubs} публ / ${weeks} нед`} />;
+            })}
+          </Section>
+        </div>
+
+        {/* ===== EXPENSE PAGES (1..N) ===== */}
+        {expenseChunks.map((chunk, idx) => (
+          <div className="pdf-page" style={pageStyle} key={'exp-page-' + idx}>
+            {renderExpenseChunk(chunk, idx)}
+          </div>
+        ))}
+
+        {/* ===== SCENARIOS PAGE ===== */}
+        <div className="pdf-page" style={pageStyle}>
+          <Section title="ПРОГНОЗ НА ГОД">
+            <ScenarioBlock name="СЦЕНАРИЙ: КОНСЕРВАТИВНЫЙ" data={results.scenarios.conservative} color="#F97316" />
+            <ScenarioBlock name="СЦЕНАРИЙ: РЕАЛИСТИЧНЫЙ" data={results.scenarios.realistic} color={COLORS.primary} />
+            <ScenarioBlock name="СЦЕНАРИЙ: ОПТИМИСТИЧНЫЙ" data={results.scenarios.optimistic} color="#22C55E" />
+          </Section>
+
+          <div style={{ marginTop: 40, paddingTop: 20, borderTop: `2px solid ${COLORS.primary}`, textAlign: 'center' }}>
+            <div style={{ color: '#666', fontSize: 12, marginBottom: 5 }}>Рассчитано с помощью калькулятора Double Sales</div>
+            <a href="https://julietsapova.com/" style={{ color: COLORS.primary, fontSize: 12, fontWeight: 'bold', textDecoration: 'none' }}>
+              @julie_tsapova | julietsapova.com
+            </a>
+          </div>
         </div>
       </div>
-    </div>
-  );
-});
-
+    );
+  }
+);
 
 const DoubleSalesCalculator = () => {
   const [products, setProducts] = useState({ tripwirePrice: '3000', flagshipPrice: '100000', upsellPrice: '0', maxFlagshipSales: '999' });
@@ -332,7 +449,7 @@ const DoubleSalesCalculator = () => {
     const pdfHeight = pdf.internal.pageSize.getHeight();
 
     for (let i = 0; i < pages.length; i++) {
-      const pageElement = pages[i] as HTMLElement;
+      const pageElement = pages[i];
 
       const canvas = await html2canvas(pageElement, {
         scale: 2,
@@ -346,7 +463,6 @@ const DoubleSalesCalculator = () => {
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
 
-      // scale:2 => делим на 2, чтобы правильно посчитать пропорции
       const ratio = pdfWidth / (imgWidth / 2);
       const scaledHeight = (imgHeight / 2) * ratio;
 
@@ -354,12 +470,10 @@ const DoubleSalesCalculator = () => {
 
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, scaledHeight);
 
-      // Номер страницы
-      pdf.setFillColor(255, 255, 255);
-      pdf.rect(pdfWidth - 45, pdfHeight - 15, 40, 10, 'F');
+      // Номер страницы без кириллицы, чтобы не было кракозябр
       pdf.setFontSize(10);
       pdf.setTextColor(150, 150, 150);
-      pdf.text(`${i + 1} / ${pages.length}`, pdfWidth - 15, pdfHeight - 8, { align: 'right' });
+      pdf.text(`${i + 1} / ${pages.length}`, pdfWidth - 10, pdfHeight - 8, { align: 'right' });
     }
 
     pdf.save('Double_Sales_Расчёт.pdf');
@@ -370,7 +484,6 @@ const DoubleSalesCalculator = () => {
 
   setGenerating(false);
 };
-
 
   const resetCalc = () => setCalculated(false);
   const formatNum = (n) => !isFinite(n) ? '—' : n >= 1e6 ? (n/1e6).toFixed(1)+'М' : n >= 1e3 ? (n/1e3).toFixed(1)+'К' : Math.round(n).toLocaleString('ru');
