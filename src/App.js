@@ -9,6 +9,7 @@ const TabBtn = ({ id, activeTab, setActiveTab, icon: Icon, label }) => (
   </button>
 );
 
+
 const Input = ({ label, value, onChange, suffix, hint }) => (
   <div className="space-y-1">
     <label className="text-sm font-medium" style={{ color: COLORS.primary }}>{label}</label>
