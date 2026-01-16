@@ -178,9 +178,7 @@ const DoubleSalesCalculator = () => {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const margin = 10;
-      
-      const html2canvas = (await import('html2canvas')).default; // у тебя он уже есть выше, если оставляешь — эту строку НЕ дублируй
-      
+            
       // --- FOOTER CANVAS (рендерим заранее, чтобы зарезервировать место) ---
       let footerCanvas = null;
       let footerImgHeight = 0;
