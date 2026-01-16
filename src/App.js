@@ -284,7 +284,6 @@ if (imgHeight <= (maxPageY - margin)) {
 
       }
 
-      const totalPages = pageContents.length;
       
 for (let p = 0; p < pageContents.length; p++) {
   if (p > 0) pdf.addPage();
@@ -326,7 +325,7 @@ for (let p = 0; p < pageContents.length; p++) {
   pdf.text(
     `${p + 1} / ${pageContents.length}`,
     pdfWidth - margin,
-    pdfHeight - 8,
+    pdfHeight - 6,
     { align: 'right' }
   );
 }
@@ -530,28 +529,32 @@ for (let p = 0; p < pageContents.length; p++) {
 
         
         {/* ДОХОДЫ - всё в одной секции чтобы не разрывалось */}
-        <div className="pdf-section" style={{ marginBottom: 12, backgroundColor: 'white' }}>
-        <Piece style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold', marginBottom: 2 }}>ДОХОДЫ</Piece>          
-          {/* Консервативный */}
-        <Piece style={{ backgroundColor: '#F97316', color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>СЦЕНАРИЙ: КОНСЕРВАТИВНЫЙ</Piece>          <Row label="Продаж ТР за год" value={Math.round(results.scenarios.conservative.totalTR)} />
-          <Row label="Продаж ФЛ за год" value={results.scenarios.conservative.totalFL.toFixed(1)} />
-          <Row label="Выручка за год" value={formatCur(results.scenarios.conservative.totalRev)} bold />
-          <Row label="Чистая прибыль" value={formatCur(results.scenarios.conservative.yearProfit)} bold />
-          
-          {/* Реалистичный */}
-        <Piece style={{ backgroundColor: COLORS.primary, color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>СЦЕНАРИЙ: РЕАЛИСТИЧНЫЙ</Piece>
-          <Row label="Продаж ТР за год" value={Math.round(results.scenarios.realistic.totalTR)} />
-          <Row label="Продаж ФЛ за год" value={results.scenarios.realistic.totalFL.toFixed(1)} />
-          <Row label="Выручка за год" value={formatCur(results.scenarios.realistic.totalRev)} bold />
-          <Row label="Чистая прибыль" value={formatCur(results.scenarios.realistic.yearProfit)} bold />
-          
-          {/* Оптимистичный */}
-        <Piece style={{ backgroundColor: '#22C55E', color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>СЦЕНАРИЙ: ОПТИМИСТИЧНЫЙ</Piece>
-          <Row label="Продаж ТР за год" value={Math.round(results.scenarios.optimistic.totalTR)} />
-          <Row label="Продаж ФЛ за год" value={results.scenarios.optimistic.totalFL.toFixed(1)} />
-          <Row label="Выручка за год" value={formatCur(results.scenarios.optimistic.totalRev)} bold />
-          <Row label="Чистая прибыль" value={formatCur(results.scenarios.optimistic.yearProfit)} bold />
-        </div>
+        <Section title="ДОХОДЫ">
+        <Piece style={{ backgroundColor: '#F97316', color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>
+          СЦЕНАРИЙ: КОНСЕРВАТИВНЫЙ
+        </Piece>
+        <Row label="Продаж ТР за год" value={Math.round(results.scenarios.conservative.totalTR)} />
+        <Row label="Продаж ФЛ за год" value={results.scenarios.conservative.totalFL.toFixed(1)} />
+        <Row label="Выручка за год" value={formatCur(results.scenarios.conservative.totalRev)} bold />
+        <Row label="Чистая прибыль" value={formatCur(results.scenarios.conservative.yearProfit)} bold />
+      
+        <Piece style={{ backgroundColor: COLORS.primary, color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>
+          СЦЕНАРИЙ: РЕАЛИСТИЧНЫЙ
+        </Piece>
+        <Row label="Продаж ТР за год" value={Math.round(results.scenarios.realistic.totalTR)} />
+        <Row label="Продаж ФЛ за год" value={results.scenarios.realistic.totalFL.toFixed(1)} />
+        <Row label="Выручка за год" value={formatCur(results.scenarios.realistic.totalRev)} bold />
+        <Row label="Чистая прибыль" value={formatCur(results.scenarios.realistic.yearProfit)} bold />
+      
+        <Piece style={{ backgroundColor: '#22C55E', color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>
+          СЦЕНАРИЙ: ОПТИМИСТИЧНЫЙ
+        </Piece>
+        <Row label="Продаж ТР за год" value={Math.round(results.scenarios.optimistic.totalTR)} />
+        <Row label="Продаж ФЛ за год" value={results.scenarios.optimistic.totalFL.toFixed(1)} />
+        <Row label="Выручка за год" value={formatCur(results.scenarios.optimistic.totalRev)} bold />
+        <Row label="Чистая прибыль" value={formatCur(results.scenarios.optimistic.yearProfit)} bold />
+      </Section>
+
         
         {/* Footer */}
           <div id="pdf-footer" style={{ marginTop: 0, paddingTop: 14, borderTop: `2px solid ${COLORS.primary}`, textAlign: 'center' }}>
