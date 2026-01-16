@@ -290,34 +290,29 @@ for (let p = 0; p < pageContents.length; p++) {
 
   const items = pageContents[p];
 
-  // 1. рисуем весь контент страницы
-  for (const item of items) {
-    const imgData = item.canvas.toDataURL('image/png');
-    pdf.addImage(imgData, 'PNG', margin, item.y, item.width, item.height);
-  }
+      // 1. рисуем весь контент страницы
+      for (const item of items) {
+        const imgData = item.canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', margin, item.y, item.width, item.height);
+      }
+      
+      // 2. футер — на каждую страницу
+      if (footerCanvas) {
+        const footerY = pdfHeight - margin - footerImgHeight - footerOffset;
+        const footerImgData = footerCanvas.toDataURL('image/png');
+      
+        pdf.addImage(footerImgData, 'PNG', margin, footerY, footerImgWidth, footerImgHeight);
+      
+        // кликабельная ссылка
+        pdf.link(
+          margin,
+          footerY,
+          pdfWidth - margin * 2,
+          footerImgHeight,
+          { url: 'https://julietsapova.com/' }
+        );
+      }
 
-  // 2. футер — ТОЛЬКО на последнюю страницу
-  if (footerCanvas && p === pageContents.length - 1) {
-    const footerY = pdfHeight - margin - footerImgHeight - footerOffset;
-    const footerImgData = footerCanvas.toDataURL('image/png');
-    pdf.addImage(
-      footerImgData,
-      'PNG',
-      margin,
-      footerY,
-      footerImgWidth,
-      footerImgHeight
-    );
-
-    // кликабельная ссылка
-      pdf.link(
-        margin,
-        footerY,
-        pdfWidth - margin * 2,
-        footerImgHeight,
-        { url: 'https://julietsapova.com/' }
-      );
-  }
 
   // 3. номер страницы
   pdf.setFontSize(9);
@@ -406,7 +401,7 @@ for (let p = 0; p < pageContents.length; p++) {
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            padding: '8px 16px',
+            padding: '8px 16px 9px',
             backgroundColor: highlight ? COLORS.mid : COLORS.accent, // ✅ было COLORS.primary
             color: highlight ? 'white' : '#333',
             borderBottom: '1px solid white',
@@ -610,7 +605,7 @@ for (let p = 0; p < pageContents.length; p++) {
           }}
         >
 
-          <div style={{ color: '#666', fontSize: 12, marginBottom: 5 }}>
+          <div style={{ color: '#666', fontSize: 14, marginBottom: 5 }}>
             Рассчитано с помощью калькулятора Double Sales
           </div>
           <a
@@ -618,7 +613,7 @@ for (let p = 0; p < pageContents.length; p++) {
             style={{
               display: 'inline-block',  // ✅ чтобы canvas считал высоту корректно
               color: COLORS.primary,
-              fontSize: 12,
+              fontSize: 14,
               fontWeight: 'bold',
               textDecoration: 'none'
             }}
