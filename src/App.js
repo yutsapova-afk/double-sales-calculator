@@ -74,277 +74,6 @@ const CalculateButton = ({ onClick, calculated }) => (
   </button>
 );
 
-// PDF Report Component
-// PDF Report Component
-const PDFReport = React.forwardRef(
-  ({ results, fixedExpenses, variableExpenses, startupExpenses, num, formatCur, formatNum }, ref) => {
-    if (!results) return null;
-
-    const nonZeroFixed = fixedExpenses.filter((e) => num(e.amount || '0') > 0);
-    const nonZeroVar = variableExpenses.filter((e) => num(e.percent || '0') > 0);
-    const nonZeroStartup = startupExpenses.filter((e) => num(e.amount || '0') > 0);
-
-    const showUpsell = results.p.upsellPrice > 0;
-    const showMaxSales = results.p.maxFlagshipSales !== 999;
-
-    const Section = ({ title, children }) => (
-      <div style={{ marginBottom: 20 }}>
-        <div
-          style={{
-            backgroundColor: COLORS.primary,
-            color: 'white',
-            padding: '12px 16px',
-            fontSize: 16,
-            fontWeight: 'bold',
-            marginBottom: 2,
-          }}
-        >
-          {title}
-        </div>
-        {children}
-      </div>
-    );
-
-    const Row = ({ label, value, bold, highlight }) => (
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          padding: '10px 16px',
-          backgroundColor: highlight ? COLORS.primary : COLORS.accent,
-          color: highlight ? 'white' : '#333',
-          borderBottom: '1px solid white',
-        }}
-      >
-        <span style={{ fontWeight: bold ? 'bold' : 'normal' }}>{label}</span>
-        <span style={{ fontWeight: 'bold' }}>{value}</span>
-      </div>
-    );
-
-    const ScenarioBlock = ({ name, data, color }) => (
-      <div style={{ marginBottom: 15 }}>
-        <div style={{ backgroundColor: color, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>
-          {name}
-        </div>
-        <Row label="Продаж ТР за год" value={String(Math.round(data.totalTR))} />
-        <Row label="Продаж ФЛ за год" value={data.totalFL.toFixed(1)} />
-        <Row label="Выручка за год" value={formatCur(data.totalRev)} bold />
-        <Row label="Чистая прибыль" value={formatCur(data.yearProfit)} bold />
-      </div>
-    );
-
-    // ====== Автопагинация расходов ======
-    // Мы превращаем расходы в плоский список "строк" и режем его на чанки
-    // Каждый чанк уходит на отдельную pdf-страницу
-    const buildExpenseLines = () => {
-      const lines = [];
-
-      if (nonZeroFixed.length > 0) {
-        lines.push({ kind: 'sub', text: 'Постоянные/мес:' });
-        nonZeroFixed.forEach((e) => lines.push({ kind: 'row', label: e.name, value: formatCur(num(e.amount || '0')) }));
-      }
-
-      if (nonZeroVar.length > 0) {
-        lines.push({ kind: 'sub', text: 'Переменные:' });
-        nonZeroVar.forEach((e) => lines.push({ kind: 'row', label: e.name, value: String(num(e.percent || '0')) + '%' }));
-      }
-
-      if (nonZeroStartup.length > 0) {
-        lines.push({ kind: 'sub', text: 'Стартовые:' });
-        nonZeroStartup.forEach((e) => lines.push({ kind: 'row', label: e.name, value: formatCur(num(e.amount || '0')) }));
-      }
-
-      // Итоги и окупаемость всегда в конце
-      lines.push({ kind: 'spacer' });
-      lines.push({ kind: 'row', label: 'ИТОГО постоянные/мес', value: formatCur(results.totalFixed), highlight: true, bold: true });
-      lines.push({
-        kind: 'row',
-        label: 'ИТОГО переменные',
-        value: (results.totalVarPercent * 100).toFixed(1) + '%',
-        highlight: true,
-        bold: true,
-      });
-      lines.push({ kind: 'row', label: 'ИТОГО стартовые', value: formatCur(results.totalStartup), highlight: true, bold: true });
-      lines.push({
-        kind: 'row',
-        label: 'Окупаемость',
-        value: results.paybackWeeks === Infinity ? '—' : String(results.paybackWeeks) + ' нед',
-        highlight: true,
-        bold: true,
-      });
-
-      return lines;
-    };
-
-    const chunkLines = (lines, perPage) => {
-      const chunks = [];
-      let current = [];
-
-      for (let i = 0; i < lines.length; i++) {
-        const item = lines[i];
-
-        // spacer не считаем как полноценную строку, но оставим место
-        const isSpacer = item.kind === 'spacer';
-        const currentCount = current.filter((x) => x.kind !== 'spacer').length;
-
-        // Если следующая строка не влезает, начинаем новую страницу
-        if (!isSpacer && currentCount >= perPage) {
-          chunks.push(current);
-          current = [];
-        }
-
-        current.push(item);
-      }
-
-      if (current.length > 0) chunks.push(current);
-      return chunks;
-    };
-
-    const expenseLines = buildExpenseLines();
-
-    // Важно: этот лимит подобран под твой текущий дизайн
-    // Если захочешь сделать плотнее или свободнее, меняется только число
-    const EXPENSE_ROWS_PER_PAGE = 26;
-
-    // Если расходов мало, будет 1 страница. Если много, будет 2, 3, 4 и так далее
-    const expenseChunks = chunkLines(expenseLines, EXPENSE_ROWS_PER_PAGE);
-
-    const pageStyle = {
-      padding: 40,
-      minHeight: 1100,
-      boxSizing: 'border-box',
-      backgroundColor: '#fff',
-      fontFamily: 'Arial, sans-serif',
-      fontSize: 14,
-      color: '#333',
-    };
-
-    const renderExpenseChunk = (chunk, idx) => (
-      <Section title="РАСХОДЫ" key={'exp-section-' + idx}>
-        {chunk.map((item, i) => {
-          if (item.kind === 'sub') {
-            return (
-              <div
-                key={'sub-' + i}
-                style={{
-                  padding: '8px 16px',
-                  fontWeight: 'bold',
-                  color: COLORS.primary,
-                  marginTop: i === 0 ? 0 : 10,
-                }}
-              >
-                {item.text}
-              </div>
-            );
-          }
-
-          if (item.kind === 'spacer') {
-            return <div key={'sp-' + i} style={{ height: 10 }} />;
-          }
-
-          return (
-            <Row
-              key={'row-' + i}
-              label={item.label}
-              value={item.value}
-              bold={!!item.bold}
-              highlight={!!item.highlight}
-            />
-          );
-        })}
-      </Section>
-    );
-
-    return (
-      <div ref={ref} style={{ width: 794, backgroundColor: '#fff' }}>
-        {/* ===== PAGE 1 ===== */}
-        <div className="pdf-page" style={pageStyle}>
-          <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '30px 20px', textAlign: 'center', marginBottom: 30 }}>
-            <div style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 5 }}>DOUBLE SALES</div>
-            <div style={{ fontSize: 16, opacity: 0.9 }}>Система продаж</div>
-          </div>
-
-          <Section title="ПРОДУКТЫ">
-            <Row label="Цена трипваера" value={formatCur(results.p.tripwirePrice)} />
-            <Row label="Цена флагмана" value={formatCur(results.p.flagshipPrice)} />
-            {showUpsell && <Row label="Допродажи" value={formatCur(results.p.upsellPrice)} />}
-            {showMaxSales && <Row label="Мест на ФЛ/мес" value={String(results.p.maxFlagshipSales)} />}
-          </Section>
-
-          <Section title="ОХВАТЫ">
-            <Row label="Средний охват публикации" value={formatNum(results.r.avgReelsReach)} />
-            <Row label="Публикаций в неделю" value={String(results.r.reelsPerWeek)} />
-            <Row label="Рост охватов/мес" value={results.r.monthlyGrowth + '%'} />
-          </Section>
-
-          <Section title="КОНВЕРСИИ ВОРОНКИ">
-            <Row label="Контент → переход в бот" value={(results.conv.reelsToBot * 100).toFixed(1) + '%'} />
-            <Row label="Бот → просмотр ЛМ" value={(results.conv.botToLM * 100).toFixed(0) + '%'} />
-            <Row label="ЛМ → покупка ТР" value={(results.conv.lmToTR * 100).toFixed(1) + '%'} />
-            <Row label="ТР → заявка на ФЛ" value={(results.conv.trToApplication * 100).toFixed(0) + '%'} />
-            <Row label="Заявка → покупка ФЛ" value={(results.conv.applicationToFL * 100).toFixed(0) + '%'} />
-            {results.conv.lmToApplicationDirect > 0 && (
-              <Row label="ЛМ/Контент → заявка напрямую" value={(results.conv.lmToApplicationDirect * 100).toFixed(1) + '%'} />
-            )}
-          </Section>
-
-          <Section title="РЕЗУЛЬТАТЫ (в неделю)">
-            <Row label="Охватов" value={formatNum(results.weeklyReach)} />
-            <Row label="Подписок в бот" value={results.weeklyBotSubs.toFixed(1)} />
-            <Row label="Просмотров ЛМ" value={results.weeklyLMViews.toFixed(1)} />
-            <Row label="Продаж ТР" value={results.weeklyTRSales.toFixed(2)} />
-            <Row label="Заявок на ФЛ" value={results.weeklyApps.toFixed(2)} />
-            <Row label="Продаж ФЛ" value={results.weeklyFLSales.toFixed(3)} />
-            <Row label="Выручка в неделю" value={formatCur(results.weeklyRevTotal)} bold highlight />
-            <Row label="Выручка в месяц" value={formatCur(results.monthlyRev)} bold highlight />
-            <Row label="Прибыль в месяц" value={formatCur(results.monthlyProfit)} bold highlight />
-          </Section>
-
-          <Section title="СКОЛЬКО НУЖНО ДЛЯ ЦЕЛЕЙ">
-            {[
-              { name: 'Первая продажа ТР', reach: results.reachFirstTR },
-              { name: 'Первая продажа ФЛ', reach: results.reachFirstFL },
-              { name: '30 заявок на ФЛ', reach: results.reach30Apps },
-              { name: '100 000 ₽', reach: results.reach100k },
-              { name: '1 000 000 ₽', reach: results.reach1M },
-            ].map((g, i) => {
-              const pubs = results.r.avgReelsReach > 0 ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach)) : 1;
-              const weeks =
-                results.r.avgReelsReach > 0 && results.r.reelsPerWeek > 0
-                  ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach / results.r.reelsPerWeek))
-                  : 1;
-              return <Row key={i} label={g.name} value={`${formatNum(g.reach)} охв / ${pubs} публ / ${weeks} нед`} />;
-            })}
-          </Section>
-        </div>
-
-        {/* ===== EXPENSE PAGES (1..N) ===== */}
-        {expenseChunks.map((chunk, idx) => (
-          <div className="pdf-page" style={pageStyle} key={'exp-page-' + idx}>
-            {renderExpenseChunk(chunk, idx)}
-          </div>
-        ))}
-
-        {/* ===== SCENARIOS PAGE ===== */}
-        <div className="pdf-page" style={pageStyle}>
-          <Section title="ПРОГНОЗ НА ГОД">
-            <ScenarioBlock name="СЦЕНАРИЙ: КОНСЕРВАТИВНЫЙ" data={results.scenarios.conservative} color="#F97316" />
-            <ScenarioBlock name="СЦЕНАРИЙ: РЕАЛИСТИЧНЫЙ" data={results.scenarios.realistic} color={COLORS.primary} />
-            <ScenarioBlock name="СЦЕНАРИЙ: ОПТИМИСТИЧНЫЙ" data={results.scenarios.optimistic} color="#22C55E" />
-          </Section>
-
-          <div style={{ marginTop: 40, paddingTop: 20, borderTop: `2px solid ${COLORS.primary}`, textAlign: 'center' }}>
-            <div style={{ color: '#666', fontSize: 12, marginBottom: 5 }}>Рассчитано с помощью калькулятора Double Sales</div>
-            <a href="https://julietsapova.com/" style={{ color: COLORS.primary, fontSize: 12, fontWeight: 'bold', textDecoration: 'none' }}>
-              @julie_tsapova | julietsapova.com
-            </a>
-          </div>
-        </div>
-      </div>
-    );
-  }
-);
-
 const DoubleSalesCalculator = () => {
   const [products, setProducts] = useState({ tripwirePrice: '3000', flagshipPrice: '100000', upsellPrice: '0', maxFlagshipSales: '999' });
   const [conversions, setConversions] = useState({ reelsToBot: '2', botToLM: '70', lmToTR: '5', trToApplication: '30', applicationToFL: '20', lmToApplicationDirect: '1' });
@@ -434,60 +163,227 @@ const DoubleSalesCalculator = () => {
   };
 
   const generatePDF = async () => {
-  if (!results || !pdfRef.current) return;
-  setGenerating(true);
-
-  try {
-    const html2canvas = (await import('html2canvas')).default;
-    const { jsPDF } = await import('jspdf');
-
-    const element = pdfRef.current;
-    const pages = element.querySelectorAll('.pdf-page');
-
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-
-    for (let i = 0; i < pages.length; i++) {
-      const pageElement = pages[i];
-
-      const canvas = await html2canvas(pageElement, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-
-      const ratio = pdfWidth / (imgWidth / 2);
-      const scaledHeight = (imgHeight / 2) * ratio;
-
-      if (i > 0) pdf.addPage();
-
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, scaledHeight);
-
-      // Номер страницы без кириллицы, чтобы не было кракозябр
-      pdf.setFontSize(10);
-      pdf.setTextColor(150, 150, 150);
-      pdf.text(`${i + 1} / ${pages.length}`, pdfWidth - 10, pdfHeight - 8, { align: 'right' });
+    if (!results || !pdfRef.current) return;
+    setGenerating(true);
+    
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+      
+      const element = pdfRef.current;
+      const sections = element.querySelectorAll('.pdf-section');
+      
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const usableHeight = pdfHeight - margin * 2;
+      
+      let currentY = margin;
+      let pageNum = 1;
+      const pageContents = [[]];
+      
+      // Рендерим каждую секцию отдельно и распределяем по страницам
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i];
+        const canvas = await html2canvas(section, { 
+          scale: 2, 
+          useCORS: true, 
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
+        
+        const imgWidth = pdfWidth - margin * 2;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        // Если секция не помещается на текущую страницу — переходим на новую
+        if (currentY + imgHeight > pdfHeight - margin && currentY > margin) {
+          pageNum++;
+          pageContents.push([]);
+          currentY = margin;
+        }
+        
+        pageContents[pageNum - 1].push({
+          canvas,
+          y: currentY,
+          width: imgWidth,
+          height: imgHeight
+        });
+        
+        currentY += imgHeight + 5;
+      }
+      
+      const totalPages = pageContents.length;
+      
+      // Отрисовываем страницы
+      for (let p = 0; p < pageContents.length; p++) {
+        if (p > 0) pdf.addPage();
+        
+        const items = pageContents[p];
+        for (const item of items) {
+          const imgData = item.canvas.toDataURL('image/png');
+          pdf.addImage(imgData, 'PNG', margin, item.y, item.width, item.height);
+        }
+        
+        // Номер страницы — используем только цифры чтобы избежать проблем с кириллицей
+        pdf.setFontSize(9);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text(String(p + 1) + ' / ' + String(totalPages), pdfWidth - margin, pdfHeight - 5, { align: 'right' });
+      }
+      
+      pdf.save('Double_Sales_Raschet.pdf');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      alert('Ошибка при создании PDF. Попробуйте ещё раз.');
     }
-
-    pdf.save('Double_Sales_Расчёт.pdf');
-  } catch (e) {
-    console.error('PDF generation error:', e);
-    alert('Ошибка при создании PDF. Попробуйте ещё раз.');
-  }
-
-  setGenerating(false);
-};
+    
+    setGenerating(false);
+  };
 
   const resetCalc = () => setCalculated(false);
   const formatNum = (n) => !isFinite(n) ? '—' : n >= 1e6 ? (n/1e6).toFixed(1)+'М' : n >= 1e3 ? (n/1e3).toFixed(1)+'К' : Math.round(n).toLocaleString('ru');
-  const formatCur = (n) => !isFinite(n) ? '—' : new Intl.NumberFormat('ru-RU').format(Math.round(n)) + ' ₽';
+  const formatCur = (n) => !isFinite(n) ? '—' : new Intl.NumberFormat('ru-RU').format(Math.round(n)) + ' P';
+
+  // PDF Report Component
+  const PDFReport = React.forwardRef(({ results, fixedExpenses, variableExpenses, startupExpenses }, ref) => {
+    if (!results) return null;
+    
+    const nonZeroFixed = fixedExpenses.filter(e => num(e.amount) > 0);
+    const nonZeroVar = variableExpenses.filter(e => num(e.percent) > 0);
+    const nonZeroStartup = startupExpenses.filter(e => num(e.amount) > 0);
+    const showUpsell = results.p.upsellPrice > 0;
+    const showMaxSales = results.p.maxFlagshipSales !== 999;
+    
+    const Section = ({ title, children }) => (
+      <div className="pdf-section" style={{ marginBottom: 15, backgroundColor: 'white' }}>
+        <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>{title}</div>
+        {children}
+      </div>
+    );
+    
+    const Row = ({ label, value, bold, highlight }) => (
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 16px', backgroundColor: highlight ? COLORS.primary : COLORS.accent, color: highlight ? 'white' : '#333', borderBottom: '1px solid white', fontSize: 12 }}>
+        <span style={{ fontWeight: bold ? 'bold' : 'normal' }}>{label}</span>
+        <span style={{ fontWeight: 'bold' }}>{value}</span>
+      </div>
+    );
+    
+    const ScenarioBlock = ({ name, data, color }) => (
+      <div className="pdf-section" style={{ marginBottom: 15, backgroundColor: 'white' }}>
+        <div style={{ backgroundColor: color, color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold' }}>{name}</div>
+        <Row label="Prodazh TR za god" value={Math.round(data.totalTR)} />
+        <Row label="Prodazh FL za god" value={data.totalFL.toFixed(1)} />
+        <Row label="Vyruchka za god" value={formatCur(data.totalRev)} bold />
+        <Row label="Chistaya pribyl" value={formatCur(data.yearProfit)} bold />
+      </div>
+    );
+
+    return (
+      <div ref={ref} style={{ width: 794, padding: 20, backgroundColor: 'white', fontFamily: 'Arial, sans-serif', fontSize: 12, color: '#333' }}>
+        {/* Header */}
+        <div className="pdf-section" style={{ backgroundColor: COLORS.primary, color: 'white', padding: '25px 20px', textAlign: 'center', marginBottom: 15 }}>
+          <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 5 }}>DOUBLE SALES</div>
+          <div style={{ fontSize: 14, opacity: 0.9 }}>Sistema prodazh</div>
+        </div>
+        
+        {/* ПРОДУКТЫ */}
+        <Section title="PRODUKTY">
+          <Row label="Cena tripvaera" value={formatCur(results.p.tripwirePrice)} />
+          <Row label="Cena flagmana" value={formatCur(results.p.flagshipPrice)} />
+          {showUpsell && <Row label="Doprodazhi" value={formatCur(results.p.upsellPrice)} />}
+          {showMaxSales && <Row label="Mest na FL/mes" value={results.p.maxFlagshipSales} />}
+        </Section>
+        
+        {/* ОХВАТЫ */}
+        <Section title="OHVATY">
+          <Row label="Sredniy ohvat publikacii" value={formatNum(results.r.avgReelsReach)} />
+          <Row label="Publikaciy v nedelyu" value={results.r.reelsPerWeek} />
+          <Row label="Rost ohvatov/mes" value={results.r.monthlyGrowth + '%'} />
+        </Section>
+        
+        {/* КОНВЕРСИИ */}
+        <Section title="KONVERSII VORONKI">
+          <Row label="Kontent - perehod v bot" value={(results.conv.reelsToBot * 100).toFixed(1) + '%'} />
+          <Row label="Bot - prosmotr LM" value={(results.conv.botToLM * 100).toFixed(0) + '%'} />
+          <Row label="LM - pokupka TR" value={(results.conv.lmToTR * 100).toFixed(1) + '%'} />
+          <Row label="TR - zayavka na FL" value={(results.conv.trToApplication * 100).toFixed(0) + '%'} />
+          <Row label="Zayavka - pokupka FL" value={(results.conv.applicationToFL * 100).toFixed(0) + '%'} />
+          {results.conv.lmToApplicationDirect > 0 && <Row label="LM/Kontent - zayavka napryamuyu" value={(results.conv.lmToApplicationDirect * 100).toFixed(1) + '%'} />}
+        </Section>
+        
+        {/* РЕЗУЛЬТАТЫ */}
+        <Section title="REZULTATY (v nedelyu)">
+          <Row label="Ohvatov" value={formatNum(results.weeklyReach)} />
+          <Row label="Podpisok v bot" value={results.weeklyBotSubs.toFixed(1)} />
+          <Row label="Prosmotrov LM" value={results.weeklyLMViews.toFixed(1)} />
+          <Row label="Prodazh TR" value={results.weeklyTRSales.toFixed(2)} />
+          <Row label="Zayavok na FL" value={results.weeklyApps.toFixed(2)} />
+          <Row label="Prodazh FL" value={results.weeklyFLSales.toFixed(3)} />
+          <Row label="Vyruchka v nedelyu" value={formatCur(results.weeklyRevTotal)} bold highlight />
+          <Row label="Vyruchka v mesyac" value={formatCur(results.monthlyRev)} bold highlight />
+          <Row label="Pribyl v mesyac" value={formatCur(results.monthlyProfit)} bold highlight />
+        </Section>
+        
+        {/* ЦЕЛИ */}
+        <Section title="SKOLKO NUZHNO DLYA CELEY">
+          {[
+            { name: 'Pervaya prodazha TR', reach: results.reachFirstTR },
+            { name: 'Pervaya prodazha FL', reach: results.reachFirstFL },
+            { name: '30 zayavok na FL', reach: results.reach30Apps },
+            { name: '100 000 P', reach: results.reach100k },
+            { name: '1 000 000 P', reach: results.reach1M },
+          ].map((g, i) => {
+            const pubs = results.r.avgReelsReach > 0 ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach)) : 1;
+            const weeks = results.r.avgReelsReach > 0 && results.r.reelsPerWeek > 0 ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach / results.r.reelsPerWeek)) : 1;
+            return <Row key={i} label={g.name} value={formatNum(g.reach) + ' ohv / ' + pubs + ' publ / ' + weeks + ' ned'} />;
+          })}
+        </Section>
+        
+        {/* РАСХОДЫ */}
+        <Section title="RASHODY">
+          {nonZeroFixed.length > 0 && (
+            <>
+              <div style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11 }}>Postoyannye/mes:</div>
+              {nonZeroFixed.map((e, i) => <Row key={i} label={e.name} value={formatCur(num(e.amount))} />)}
+            </>
+          )}
+          {nonZeroVar.length > 0 && (
+            <>
+              <div style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11, marginTop: 5 }}>Peremennye:</div>
+              {nonZeroVar.map((e, i) => <Row key={i} label={e.name} value={num(e.percent) + '%'} />)}
+            </>
+          )}
+          {nonZeroStartup.length > 0 && (
+            <>
+              <div style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11, marginTop: 5 }}>Startovye:</div>
+              {nonZeroStartup.map((e, i) => <Row key={i} label={e.name} value={formatCur(num(e.amount))} />)}
+            </>
+          )}
+          <div style={{ marginTop: 8 }}>
+            <Row label="ITOGO postoyannye/mes" value={formatCur(results.totalFixed)} bold highlight />
+            <Row label="ITOGO peremennye" value={(results.totalVarPercent * 100).toFixed(1) + '%'} bold highlight />
+            <Row label="ITOGO startovye" value={formatCur(results.totalStartup)} bold highlight />
+            <Row label="Okupaemost" value={results.paybackWeeks === Infinity ? '—' : results.paybackWeeks + ' ned'} bold highlight />
+          </div>
+        </Section>
+        
+        {/* СЦЕНАРИИ */}
+        <div className="pdf-section" style={{ marginBottom: 15 }}>
+          <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>PROGNOZ NA GOD</div>
+        </div>
+        
+        <ScenarioBlock name="SCENARIY: KONSERVATIVNYY" data={results.scenarios.conservative} color="#F97316" />
+        <ScenarioBlock name="SCENARIY: REALISTICHNYY" data={results.scenarios.realistic} color={COLORS.primary} />
+        <ScenarioBlock name="SCENARIY: OPTIMISTICHNYY" data={results.scenarios.optimistic} color="#22C55E" />
+        
+        {/* Footer */}
+        <div className="pdf-section" style={{ marginTop: 20, paddingTop: 15, borderTop: '2px solid ' + COLORS.primary, textAlign: 'center' }}>
+          <div style={{ color: '#666', fontSize: 10, marginBottom: 3 }}>Rasschitano s pomoshchyu kalkulyatora Double Sales</div>
+          <div style={{ color: COLORS.primary, fontSize: 10, fontWeight: 'bold' }}>@julie_tsapova | julietsapova.com</div>
+        </div>
+      </div>
+    );
+  });
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F0F7FC' }}>
@@ -564,10 +460,10 @@ const DoubleSalesCalculator = () => {
                     </div>
                   </div>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <ResultCard icon={DollarSign} label="Выручка/нед" value={formatCur(results.weeklyRevTotal)} sub={`ТР: ${formatCur(results.weeklyRevTR)}`} />
+                    <ResultCard icon={DollarSign} label="Выручка/нед" value={formatCur(results.weeklyRevTotal)} sub={'ТР: ' + formatCur(results.weeklyRevTR)} />
                     <ResultCard icon={TrendingUp} label="Выручка/мес" value={formatCur(results.monthlyRev)} hl />
                     <ResultCard icon={Target} label="Прибыль/мес" value={formatCur(results.monthlyProfit)} sub="После расходов" />
-                    <ResultCard icon={Sparkles} label="За год с ростом" value={formatCur(results.scenarios.realistic.totalRev)} sub={`Чистыми: ${formatCur(results.scenarios.realistic.yearProfit)}`} />
+                    <ResultCard icon={Sparkles} label="За год с ростом" value={formatCur(results.scenarios.realistic.totalRev)} sub={'Чистыми: ' + formatCur(results.scenarios.realistic.yearProfit)} />
                   </div>
                 </section>
 
@@ -726,12 +622,12 @@ const DoubleSalesCalculator = () => {
                 {[
                   'Подключайте сервисы по мере необходимости. Ищите бесплатные альтернативы и пробные периоды',
                   'Делайте все сами по инструкциям из интернета. Начинайте нанимать команду после 50к₽',
-                  'Не стройте сразу инфо-империю, начинайте с малого. Быстрее начнете - быстрее заработаете. Расти сытым лучше, чем голодным',
+                  'Не стройте сразу инфо-империю, начинайте с малого. Быстрее начнете - быстрее заработаете',
                   'Придерживайтесь стратегии Double Sales: 3 продукта + автоворонка + живой запуск',
-                  'Не бойтесь продавать лично тем, кто оставил заявку. Заявка - это фильтр-этап, который снижает возвраты и повышает продажи',
-                  'Не подключайте ИП и не нанимайте бухгалтера. До 2.4М/год выбирайте самозанятость и самостоятельное обслуживание',
-                  'Не старайтесь сделать идеальный контент. Чем больше контента опубликуете - тем больше людей попадут в воронку и купят ваш продукт',
-                  'Пока клиентов мало, давайте им "внутренние" рассрочки без банков. Это существенно снизит расходы, что особенно критично на старте'
+                  'Не бойтесь продавать лично тем, кто оставил заявку',
+                  'До 2.4М/год выбирайте самозанятость',
+                  'Не старайтесь сделать идеальный контент',
+                  'Пока клиентов мало, давайте им рассрочки без банков'
                 ].map((tip, idx) => (
                   <div key={idx} className="flex items-start gap-3 p-3 rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
                     <span className="w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>{idx + 1}</span>
@@ -756,15 +652,9 @@ const DoubleSalesCalculator = () => {
         <PDFReport 
           ref={pdfRef}
           results={results}
-          products={products}
-          conversions={conversions}
-          reach={reach}
           fixedExpenses={fixedExpenses}
           variableExpenses={variableExpenses}
           startupExpenses={startupExpenses}
-          num={num}
-          formatCur={formatCur}
-          formatNum={formatNum}
         />
       </div>
     </div>
