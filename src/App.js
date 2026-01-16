@@ -262,16 +262,6 @@ const DoubleSalesCalculator = () => {
         <span style={{ fontWeight: 'bold' }}>{value}</span>
       </div>
     );
-    
-    const ScenarioBlock = ({ name, data, color }) => (
-      <div className="pdf-section" style={{ marginBottom: 12, backgroundColor: 'white' }}>
-        <div style={{ backgroundColor: color, color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold' }}>{name}</div>
-        <Row label="Продаж ТР за год" value={Math.round(data.totalTR)} />
-        <Row label="Продаж ФЛ за год" value={data.totalFL.toFixed(1)} />
-        <Row label="Выручка за год" value={formatCur(data.totalRev)} bold />
-        <Row label="Чистая прибыль" value={formatCur(data.yearProfit)} bold />
-      </div>
-    );
 
     return (
       <div ref={ref} style={{ width: 794, padding: 20, backgroundColor: 'white', fontFamily: 'Arial, sans-serif', fontSize: 12, color: '#333' }}>
@@ -362,19 +352,36 @@ const DoubleSalesCalculator = () => {
           </div>
         </Section>
         
-        {/* ПРОГНОЗ */}
-        <div className="pdf-section" style={{ marginBottom: 12 }}>
-          <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>ПРОГНОЗ НА ГОД</div>
+        {/* ДОХОДЫ - всё в одной секции чтобы не разрывалось */}
+        <div className="pdf-section" style={{ marginBottom: 12, backgroundColor: 'white' }}>
+          <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold', marginBottom: 2 }}>ДОХОДЫ</div>
+          
+          {/* Консервативный */}
+          <div style={{ backgroundColor: '#F97316', color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>СЦЕНАРИЙ: КОНСЕРВАТИВНЫЙ</div>
+          <Row label="Продаж ТР за год" value={Math.round(results.scenarios.conservative.totalTR)} />
+          <Row label="Продаж ФЛ за год" value={results.scenarios.conservative.totalFL.toFixed(1)} />
+          <Row label="Выручка за год" value={formatCur(results.scenarios.conservative.totalRev)} bold />
+          <Row label="Чистая прибыль" value={formatCur(results.scenarios.conservative.yearProfit)} bold />
+          
+          {/* Реалистичный */}
+          <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>СЦЕНАРИЙ: РЕАЛИСТИЧНЫЙ</div>
+          <Row label="Продаж ТР за год" value={Math.round(results.scenarios.realistic.totalTR)} />
+          <Row label="Продаж ФЛ за год" value={results.scenarios.realistic.totalFL.toFixed(1)} />
+          <Row label="Выручка за год" value={formatCur(results.scenarios.realistic.totalRev)} bold />
+          <Row label="Чистая прибыль" value={formatCur(results.scenarios.realistic.yearProfit)} bold />
+          
+          {/* Оптимистичный */}
+          <div style={{ backgroundColor: '#22C55E', color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>СЦЕНАРИЙ: ОПТИМИСТИЧНЫЙ</div>
+          <Row label="Продаж ТР за год" value={Math.round(results.scenarios.optimistic.totalTR)} />
+          <Row label="Продаж ФЛ за год" value={results.scenarios.optimistic.totalFL.toFixed(1)} />
+          <Row label="Выручка за год" value={formatCur(results.scenarios.optimistic.totalRev)} bold />
+          <Row label="Чистая прибыль" value={formatCur(results.scenarios.optimistic.yearProfit)} bold />
         </div>
         
-        <ScenarioBlock name="СЦЕНАРИЙ: КОНСЕРВАТИВНЫЙ" data={results.scenarios.conservative} color="#F97316" />
-        <ScenarioBlock name="СЦЕНАРИЙ: РЕАЛИСТИЧНЫЙ" data={results.scenarios.realistic} color={COLORS.primary} />
-        <ScenarioBlock name="СЦЕНАРИЙ: ОПТИМИСТИЧНЫЙ" data={results.scenarios.optimistic} color="#22C55E" />
-        
         {/* Footer */}
-        <div className="pdf-section" style={{ marginTop: 20, paddingTop: 15, borderTop: '2px solid ' + COLORS.primary, textAlign: 'center' }}>
-          <div style={{ color: '#666', fontSize: 11, marginBottom: 5 }}>Рассчитано с помощью калькулятора Double Sales</div>
-          <a href="https://julietsapova.com/" target="_blank" rel="noopener noreferrer" style={{ color: COLORS.primary, fontSize: 11, fontWeight: 'bold', textDecoration: 'underline' }}>@julie_tsapova | julietsapova.com</a>
+        <div className="pdf-section" style={{ marginTop: 25, paddingTop: 20, borderTop: '2px solid ' + COLORS.primary, textAlign: 'center' }}>
+          <div style={{ color: '#666666', fontSize: 11, marginBottom: 8 }}>Рассчитано с помощью калькулятора Double Sales</div>
+          <div style={{ color: COLORS.primary, fontSize: 11, fontWeight: 'bold' }}>@julie_tsapova | julietsapova.com</div>
         </div>
       </div>
     );
