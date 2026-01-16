@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Calculator, TrendingUp, DollarSign, Target, ChevronRight, Sparkles, PiggyBank, Rocket, Lightbulb, Play, Download } from 'lucide-react';
 
-const COLORS = { primary: '#1F4E79', accent: '#E8F4FD' };
+const COLORS = { primary: '#1F4E79', mid: '#2F6FA3', accent: '#E8F4FD' };
 
 const TabBtn = ({ id, activeTab, setActiveTab, icon: Icon, label }) => (
   <button onClick={() => setActiveTab(id)} className="flex items-center gap-2 px-4 py-3 rounded-xl font-medium whitespace-nowrap transition-all" style={activeTab === id ? { backgroundColor: COLORS.primary, color: 'white' } : { backgroundColor: 'white', color: COLORS.primary, border: '1px solid #1F4E7930' }}>
@@ -234,7 +234,7 @@ if (imgHeight <= (maxPageY - margin)) {
     height: imgHeight
   });
 
-  currentY += imgHeight + 3;
+  currentY += imgHeight + 6;
 } else {
   // секция выше одной страницы: режем canvas на куски по высоте
   const pxPerMm = canvas.height / imgHeight; // сколько пикселей приходится на 1 мм в PDF
@@ -310,13 +310,13 @@ for (let p = 0; p < pageContents.length; p++) {
     );
 
     // кликабельная ссылка
-    pdf.link(
-      (pdfWidth - 90) / 2,
-      footerY + footerImgHeight - 12,
-      90,
-      8,
-      { url: 'https://julietsapova.com/' }
-    );
+      pdf.link(
+        margin,
+        footerY,
+        pdfWidth - margin * 2,
+        footerImgHeight,
+        { url: 'https://julietsapova.com/' }
+      );
   }
 
   // 3. номер страницы
@@ -355,37 +355,56 @@ for (let p = 0; p < pageContents.length; p++) {
     const showMaxSales = results.p.maxFlagshipSales !== 999;
     
     const Piece = ({ children, style }) => (
-      <div className="pdf-piece" style={style}>
-        {children}
-      </div>
-    );
+        <div className="pdf-piece" style={{ backgroundColor: 'white', ...style }}>
+          {children}
+        </div>
+      );
   
-  const Section = ({ title, children }) => (
-      <div style={{ marginBottom: 12, backgroundColor: 'white' }}>
-        <Piece style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>
-          {title}
-        </Piece>
-        {children}
-      </div>
-    );
+  const BIG_TITLES = new Set([
+  'ПРОДУКТЫ',
+  'ОХВАТЫ',
+  'КОНВЕРСИИ ВОРОНКИ',
+  'РЕЗУЛЬТАТЫ (в неделю)',
+  'СКОЛЬКО НУЖНО ДЛЯ ЦЕЛЕЙ',
+  'РАСХОДЫ',
+  'ИТОГИ ПО РАСХОДАМ',
+  'ДОХОДЫ',
+]);
+
+      const Section = ({ title, children }) => (
+        <div
+          style={{
+            marginTop: BIG_TITLES.has(title) ? 18 : 12,  // ✅ больше, чем между остальными
+            marginBottom: 12,
+            backgroundColor: 'white'
+          }}
+        >
+          <Piece style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>
+            {title}
+          </Piece>
+          {children}
+        </div>
+      );
+
 
     
     const Row = ({ label, value, bold, highlight }) => (
-      <Piece
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          padding: '8px 16px',
-          backgroundColor: highlight ? COLORS.primary : COLORS.accent,
-          color: highlight ? 'white' : '#333',
-          borderBottom: '1px solid white',
-          fontSize: 12
-        }}
-      >
-        <span style={{ fontWeight: bold ? 'bold' : 'normal' }}>{label}</span>
-        <span style={{ fontWeight: 'bold' }}>{value}</span>
-      </Piece>
-    );
+        <Piece
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            padding: '8px 16px',
+            backgroundColor: highlight ? COLORS.mid : COLORS.accent, // ✅ было COLORS.primary
+            color: highlight ? 'white' : '#333',
+            borderBottom: '1px solid white',
+            fontSize: 12
+          }}
+        >
+          <span style={{ fontWeight: bold ? 'bold' : 'normal' }}>{label}</span>
+          <span style={{ fontWeight: 'bold' }}>{value}</span>
+        </Piece>
+      );
+
 
 
       const chunk = (arr, size) => {
@@ -556,11 +575,38 @@ for (let p = 0; p < pageContents.length; p++) {
       </Section>
 
         
-        {/* Footer */}
-          <div id="pdf-footer" style={{ marginTop: 0, paddingTop: 14, borderTop: `2px solid ${COLORS.primary}`, textAlign: 'center' }}>
-          <div style={{ color: '#666', fontSize: 12, marginBottom: 5 }}>Рассчитано с помощью калькулятора Double Sales</div>
-          <a href="https://julietsapova.com/" style={{ color: COLORS.primary, fontSize: 12, fontWeight: 'bold', textDecoration: 'none' }}>@julie_tsapova | julietsapova.com</a>
+       {/* Footer */}
+        <div
+          id="pdf-footer"
+          style={{
+            width: '100%',          // ✅ чтобы canvas не считал “узкий” блок
+            marginTop: 0,
+            paddingTop: 14,
+            paddingBottom: 20,      // ✅ я бы поставил 20 для гарантии
+            lineHeight: 1.25,
+            borderTop: `2px solid ${COLORS.primary}`,
+            textAlign: 'center',
+            backgroundColor: 'white'
+          }}
+        >
+
+          <div style={{ color: '#666', fontSize: 12, marginBottom: 5 }}>
+            Рассчитано с помощью калькулятора Double Sales
+          </div>
+          <a
+            href="https://julietsapova.com/"
+            style={{
+              display: 'inline-block',  // ✅ чтобы canvas считал высоту корректно
+              color: COLORS.primary,
+              fontSize: 12,
+              fontWeight: 'bold',
+              textDecoration: 'none'
+            }}
+          >
+            @julie_tsapova | julietsapova.com
+          </a>
         </div>
+
       </div>
     );
   });
