@@ -279,7 +279,7 @@ if (imgHeight <= (maxPageY - margin)) {
         });
       
         footerImgWidth = pdfWidth - margin * 2;
-        footerImgHeight = (footerCanvas.height * footerImgWidth + 20) / footerCanvas.width;
+        footerImgHeight = (footerCanvas.height * footerImgWidth + 100) / footerCanvas.width;
       }
 
             // --- ДОБАВЛЯЕМ ФУТЕР ТОЛЬКО НА ПОСЛЕДНЮЮ СТРАНИЦУ ВНИЗ ---
