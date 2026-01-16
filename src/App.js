@@ -171,12 +171,15 @@ const DoubleSalesCalculator = () => {
       const { jsPDF } = await import('jspdf');
       
       const element = pdfRef.current;
-      const sections = element.querySelectorAll('.pdf-section');
+      const footerEl = element.querySelector('#pdf-footer');
+      const sections = Array.from(element.querySelectorAll('.pdf-section')); // без футера, футер отдельно
+
       
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const margin = 10;
+      const bottomReserve = 22; // запас под номер страницы + чтобы текст не резало
       
       let currentY = margin;
       let pageNum = 1;
@@ -192,24 +195,123 @@ const DoubleSalesCalculator = () => {
         });
         
         const imgWidth = pdfWidth - margin * 2;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        
-        if (currentY + imgHeight > pdfHeight - margin - 15 && currentY > margin) {
-          pageNum++;
-          pageContents.push([]);
-          currentY = margin;
-        }
-        
-        pageContents[pageNum - 1].push({
-          canvas,
-          y: currentY,
-          width: imgWidth,
-          height: imgHeight
-        });
-        
-        currentY += imgHeight + 3;
+const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+// доступная высота для контента на странице
+const maxPageY = pdfHeight - margin - bottomReserve;
+
+// если секция помещается целиком
+if (imgHeight <= (maxPageY - margin)) {
+  if (currentY + imgHeight > maxPageY && currentY > margin) {
+    pageNum++;
+    pageContents.push([]);
+    currentY = margin;
+  }
+
+  pageContents[pageNum - 1].push({
+    canvas,
+    y: currentY,
+    width: imgWidth,
+    height: imgHeight
+  });
+
+  currentY += imgHeight + 3;
+} else {
+  // секция выше одной страницы: режем canvas на куски по высоте
+  const pxPerMm = canvas.height / imgHeight; // сколько пикселей приходится на 1 мм в PDF
+  const sliceMm = maxPageY - margin;         // сколько мм контента помещается на пустой странице
+  const slicePx = Math.floor(sliceMm * pxPerMm);
+
+  let yPx = 0;
+
+  while (yPx < canvas.height) {
+
+    const remainingPx = canvas.height - yPx;
+    const curSlicePx = Math.min(slicePx, remainingPx);
+
+    // создаём кусок
+    const sliceCanvas = document.createElement('canvas');
+    sliceCanvas.width = canvas.width;
+    sliceCanvas.height = curSlicePx;
+
+    const ctx = sliceCanvas.getContext('2d');
+    ctx.drawImage(
+      canvas,
+      0, yPx, canvas.width, curSlicePx,   // source
+      0, 0, canvas.width, curSlicePx      // dest
+    );
+
+    const sliceHeightMm = (curSlicePx * imgWidth) / canvas.width;
+
+    // если кусок не влезает в текущую страницу, начинаем новую
+    if (currentY + sliceHeightMm > maxPageY && currentY > margin) {
+      pageNum++;
+      pageContents.push([]);
+      currentY = margin;
+    }
+
+    pageContents[pageNum - 1].push({
+      canvas: sliceCanvas,
+      y: currentY,
+      width: imgWidth,
+      height: sliceHeightMm
+    });
+
+    currentY += sliceHeightMm + 3;
+    yPx += curSlicePx;
+
+  }
+}
+
       }
+
+      // --- FOOTER CANVAS (рендерим отдельно) ---
+      let footerCanvas = null;
+      let footerImgHeight = 0;
+      let footerImgWidth = 0;
       
+      if (footerEl) {
+        footerCanvas = await html2canvas(footerEl, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+        });
+      
+        footerImgWidth = pdfWidth - margin * 2;
+        footerImgHeight = (footerCanvas.height * footerImgWidth) / footerCanvas.width;
+      }
+
+            // --- ДОБАВЛЯЕМ ФУТЕР ТОЛЬКО НА ПОСЛЕДНЮЮ СТРАНИЦУ ВНИЗ ---
+      if (footerCanvas) {
+        const footerY = pdfHeight - margin - footerImgHeight; // самый низ
+      
+        // последняя страница
+        const lastPageIndex = pageContents.length - 1;
+      
+        // если на последней странице контент залезает в зону футера, добавляем новую страницу
+        const items = pageContents[lastPageIndex];
+        const lastBottom = items.length
+          ? Math.max(...items.map(it => it.y + it.height))
+          : margin;
+      
+        const footerSafeTop = footerY - 3; // небольшой зазор
+      
+        if (lastBottom > footerSafeTop) {
+          pageContents.push([]);
+        }
+      
+        const finalLastIndex = pageContents.length - 1;
+      
+        pageContents[finalLastIndex].push({
+          canvas: footerCanvas,
+          y: footerY,
+          width: footerImgWidth,
+          height: footerImgHeight,
+          __isFooter: true,
+        });
+      }
+
       const totalPages = pageContents.length;
       
       for (let p = 0; p < pageContents.length; p++) {
@@ -217,16 +319,32 @@ const DoubleSalesCalculator = () => {
         
         const items = pageContents[p];
         for (const item of items) {
+
           const imgData = item.canvas.toDataURL('image/png');
           pdf.addImage(imgData, 'PNG', margin, item.y, item.width, item.height);
         }
+
+              // кликабельная ссылка поверх футера (только на странице, где он есть)
+      const footerItem = items.find(it => it.__isFooter);
+      if (footerItem) {
+        const linkUrl = 'https://julietsapova.com/';
+        const linkW = 90;
+        const linkH = 8;
+        const linkX = (pdfWidth - linkW) / 2;
+      
+        // лучше привязаться к реальной позиции футера
+        const linkY = footerItem.y + footerItem.height - 12;
+      
+        pdf.link(linkX, linkY, linkW, linkH, { url: linkUrl });
+      }
+
         
         pdf.setFontSize(9);
         pdf.setTextColor(150, 150, 150);
-        pdf.text((p + 1) + ' / ' + totalPages, pdfWidth - margin, pdfHeight - 5, { align: 'right' });
+        pdf.text((p + 1) + ' / ' + totalPages, pdfWidth - margin, pdfHeight - 7, { align: 'right' });
       }
       
-      pdf.save('Double_Sales_Raschet.pdf');
+      pdf.save('Double_Sales_Report.pdf');
     } catch (error) {
       console.error('PDF generation error:', error);
       alert('Ошибка при создании PDF. Попробуйте ещё раз.');
@@ -255,6 +373,7 @@ const DoubleSalesCalculator = () => {
         {children}
       </div>
     );
+
     
     const Row = ({ label, value, bold, highlight }) => (
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 16px', backgroundColor: highlight ? COLORS.primary : COLORS.accent, color: highlight ? 'white' : '#333', borderBottom: '1px solid white', fontSize: 12 }}>
@@ -262,6 +381,15 @@ const DoubleSalesCalculator = () => {
         <span style={{ fontWeight: 'bold' }}>{value}</span>
       </div>
     );
+
+      const chunk = (arr, size) => {
+        const res = [];
+        for (let i = 0; i < arr.length; i += size) res.push(arr.slice(i, i + size));
+        return res;
+      };
+      
+      // сколько строк расходов максимум на 1 странице
+      const EXP_ROWS_PER_PAGE = 15;
 
     return (
       <div ref={ref} style={{ width: 794, padding: 20, backgroundColor: 'white', fontFamily: 'Arial, sans-serif', fontSize: 12, color: '#333' }}>
@@ -325,32 +453,73 @@ const DoubleSalesCalculator = () => {
         </Section>
         
         {/* РАСХОДЫ */}
-        <Section title="РАСХОДЫ">
-          {nonZeroFixed.length > 0 && (
-            <>
-              <div style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11 }}>Постоянные/мес:</div>
-              {nonZeroFixed.map((e, i) => <Row key={i} label={e.name} value={formatCur(num(e.amount))} />)}
-            </>
-          )}
-          {nonZeroVar.length > 0 && (
-            <>
-              <div style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11, marginTop: 5 }}>Переменные:</div>
-              {nonZeroVar.map((e, i) => <Row key={i} label={e.name} value={num(e.percent) + '%'} />)}
-            </>
-          )}
-          {nonZeroStartup.length > 0 && (
-            <>
-              <div style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11, marginTop: 5 }}>Стартовые:</div>
-              {nonZeroStartup.map((e, i) => <Row key={i} label={e.name} value={formatCur(num(e.amount))} />)}
-            </>
-          )}
-          <div style={{ marginTop: 8 }}>
-            <Row label="ИТОГО постоянные/мес" value={formatCur(results.totalFixed)} bold highlight />
-            <Row label="ИТОГО переменные" value={(results.totalVarPercent * 100).toFixed(1) + '%'} bold highlight />
-            <Row label="ИТОГО стартовые" value={formatCur(results.totalStartup)} bold highlight />
-            <Row label="Окупаемость" value={results.paybackWeeks === Infinity ? '—' : results.paybackWeeks + ' нед'} bold highlight />
-          </div>
-        </Section>
+      {(() => {
+        // собираем строки ровно теми же Row, просто заранее в массив
+        const expenseRows = [];
+      
+        if (nonZeroFixed.length > 0) {
+          expenseRows.push({ type: 'sub', text: 'Постоянные/мес:' });
+          nonZeroFixed.forEach(e => expenseRows.push({ type: 'row', label: e.name, value: formatCur(num(e.amount)) }));
+        }
+      
+        if (nonZeroVar.length > 0) {
+          expenseRows.push({ type: 'sub', text: 'Переменные:' });
+          nonZeroVar.forEach(e => expenseRows.push({ type: 'row', label: e.name, value: num(e.percent) + '%' }));
+        }
+      
+        if (nonZeroStartup.length > 0) {
+          expenseRows.push({ type: 'sub', text: 'Стартовые:' });
+          nonZeroStartup.forEach(e => expenseRows.push({ type: 'row', label: e.name, value: formatCur(num(e.amount)) }));
+        }
+      
+        // итоговые строки всегда в конце
+        const summaryRows = [
+          { type: 'row', label: 'ИТОГО постоянные/мес', value: formatCur(results.totalFixed), bold: true, highlight: true },
+          { type: 'row', label: 'ИТОГО переменные', value: (results.totalVarPercent * 100).toFixed(1) + '%', bold: true, highlight: true },
+          { type: 'row', label: 'ИТОГО стартовые', value: formatCur(results.totalStartup), bold: true, highlight: true },
+          { type: 'row', label: 'Окупаемость', value: results.paybackWeeks === Infinity ? '—' : results.paybackWeeks + ' нед', bold: true, highlight: true },
+        ];
+      
+        const pages = chunk(expenseRows, EXP_ROWS_PER_PAGE);
+      
+        return (
+          <>
+            {pages.map((page, idx) => (
+              <Section key={idx} title={idx === 0 ? 'РАСХОДЫ' : 'РАСХОДЫ (продолжение)'}>
+                {page.map((it, i) => {
+                  if (it.type === 'sub') {
+                    return (
+                      <div
+                        key={`sub-${i}`}
+                        style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11, marginTop: i === 0 ? 0 : 5 }}
+                      >
+                        {it.text}
+                      </div>
+                    );
+                  }
+                  return (
+                    <Row
+                      key={`row-${i}`}
+                      label={it.label}
+                      value={it.value}
+                      bold={it.bold}
+                      highlight={it.highlight}
+                    />
+                  );
+                })}
+              </Section>
+            ))}
+      
+            {/* Итоги всегда отдельным блоком в конце, чтобы не терялись */}
+            <Section title="ИТОГИ ПО РАСХОДАМ">
+              {summaryRows.map((it, i) => (
+                <Row key={i} label={it.label} value={it.value} bold={it.bold} highlight={it.highlight} />
+              ))}
+            </Section>
+          </>
+        );
+      })()}
+
         
         {/* ДОХОДЫ - всё в одной секции чтобы не разрывалось */}
         <div className="pdf-section" style={{ marginBottom: 12, backgroundColor: 'white' }}>
@@ -379,7 +548,7 @@ const DoubleSalesCalculator = () => {
         </div>
         
         {/* Footer */}
-        <div style={{ marginTop: 40, paddingTop: 20, borderTop: `2px solid ${COLORS.primary}`, textAlign: 'center' }}>
+        <div id="pdf-footer" style={{ marginTop: 40, paddingTop: 20, borderTop: `2px solid ${COLORS.primary}`, textAlign: 'center' }}>
           <div style={{ color: '#666', fontSize: 12, marginBottom: 5 }}>Рассчитано с помощью калькулятора Double Sales</div>
           <a href="https://julietsapova.com/" style={{ color: COLORS.primary, fontSize: 12, fontWeight: 'bold', textDecoration: 'none' }}>@julie_tsapova | julietsapova.com</a>
         </div>
