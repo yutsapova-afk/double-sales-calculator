@@ -279,12 +279,12 @@ if (imgHeight <= (maxPageY - margin)) {
         });
       
         footerImgWidth = pdfWidth - margin * 2;
-        footerImgHeight = (footerCanvas.height * footerImgWidth) / footerCanvas.width;
+        footerImgHeight = (footerCanvas.height * footerImgWidth + 20) / footerCanvas.width;
       }
 
             // --- ДОБАВЛЯЕМ ФУТЕР ТОЛЬКО НА ПОСЛЕДНЮЮ СТРАНИЦУ ВНИЗ ---
       if (footerCanvas) {
-        const footerOffset = 30; // насколько поднимаем футер вверх (мм)
+        const footerOffset = 10; // насколько поднимаем футер вверх (мм)
         const footerY = pdfHeight - margin - footerImgHeight - footerOffset;
       
         // последняя страница
