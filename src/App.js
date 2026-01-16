@@ -284,7 +284,7 @@ if (imgHeight <= (maxPageY - margin)) {
 
             // --- ДОБАВЛЯЕМ ФУТЕР ТОЛЬКО НА ПОСЛЕДНЮЮ СТРАНИЦУ ВНИЗ ---
       if (footerCanvas) {
-        const footerOffset = 10; // насколько поднимаем футер вверх (мм)
+        const footerOffset = 30; // насколько поднимаем футер вверх (мм)
         const footerY = pdfHeight - margin - footerImgHeight - footerOffset;
       
         // последняя страница
