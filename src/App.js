@@ -374,17 +374,29 @@ for (let p = 0; p < pageContents.length; p++) {
       const Section = ({ title, children }) => (
         <div
           style={{
-            marginTop: BIG_TITLES.has(title) ? 18 : 12,  // ✅ больше, чем между остальными
+            marginTop: title && BIG_TITLES.has(title) ? 18 : 12,
             marginBottom: 12,
             backgroundColor: 'white'
           }}
         >
-          <Piece style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>
-            {title}
-          </Piece>
+          {title ? (
+            <Piece
+              style={{
+                backgroundColor: COLORS.primary,
+                color: 'white',
+                padding: '10px 16px',
+                fontSize: 14,
+                fontWeight: 'bold'
+              }}
+            >
+              {title}
+            </Piece>
+          ) : null}
+      
           {children}
         </div>
       );
+
 
 
     
@@ -414,7 +426,7 @@ for (let p = 0; p < pageContents.length; p++) {
       };
       
       // сколько строк расходов максимум на 1 странице
-      const EXP_ROWS_PER_PAGE = 20;
+      const EXP_ROWS_PER_PAGE = 22;
 
     return (
       <div ref={ref} style={{ width: 794, padding: 20, backgroundColor: 'white', fontFamily: 'Arial, sans-serif', fontSize: 12, color: '#333' }}>
@@ -510,16 +522,23 @@ for (let p = 0; p < pageContents.length; p++) {
         return (
           <>
             {pages.map((page, idx) => (
-              <Section key={idx} title={idx === 0 ? 'РАСХОДЫ' : 'РАСХОДЫ (продолжение)'}>
+        <Section key={idx} title={idx === 0 ? 'РАСХОДЫ' : ''}>
                 {page.map((it, i) => {
                if (it.type === 'sub') {
           return (
             <Piece
-              key={`sub-${i}`}
-              style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11, marginTop: i === 0 ? 0 : 5, backgroundColor: 'white' }}
-            >
-              {it.text}
-            </Piece>
+            key={`sub-${i}`}
+            style={{
+              padding: '8px 16px 6px',
+              fontWeight: 'bold',
+              color: COLORS.primary,
+              fontSize: 11,
+              backgroundColor: 'white'
+            }}
+          >
+            {it.text}
+          </Piece>
+
           );
         }
 
