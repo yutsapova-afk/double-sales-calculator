@@ -174,16 +174,37 @@ const DoubleSalesCalculator = () => {
       const footerEl = element.querySelector('#pdf-footer');
       const pieces = Array.from(element.querySelectorAll('.pdf-piece'));
 
-      
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const margin = 10;
-      const bottomReserve = 22; // запас под номер страницы + чтобы текст не резало
+      
+      const html2canvas = (await import('html2canvas')).default; // у тебя он уже есть выше, если оставляешь — эту строку НЕ дублируй
+      
+      // --- FOOTER CANVAS (рендерим заранее, чтобы зарезервировать место) ---
+      let footerCanvas = null;
+      let footerImgHeight = 0;
+      let footerImgWidth = 0;
+      
+      if (footerEl) {
+        footerCanvas = await html2canvas(footerEl, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+        });
+      
+        footerImgWidth = pdfWidth - margin * 2;
+        footerImgHeight = (footerCanvas.height * footerImgWidth) / footerCanvas.width;
+      }
+      
+      const footerOffset = 8; // насколько поднять футер вверх внутри PDF
+      const bottomReserve = footerCanvas ? (footerImgHeight + footerOffset + 10) : 22;
       
       let currentY = margin;
       let pageNum = 1;
       const pageContents = [[]];
+
       
       for (let i = 0; i < pieces.length; i++) {
         const section = pieces[i];
@@ -265,85 +286,53 @@ if (imgHeight <= (maxPageY - margin)) {
 
       }
 
-      // --- FOOTER CANVAS (рендерим отдельно) ---
-      let footerCanvas = null;
-      let footerImgHeight = 0;
-      let footerImgWidth = 0;
-      
-      if (footerEl) {
-        footerCanvas = await html2canvas(footerEl, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-        });
-      
-        footerImgWidth = pdfWidth - margin * 2;
-        footerImgHeight = (footerCanvas.height * footerImgWidth + 100) / footerCanvas.width;
-      }
-
-            // --- ДОБАВЛЯЕМ ФУТЕР ТОЛЬКО НА ПОСЛЕДНЮЮ СТРАНИЦУ ВНИЗ ---
-      if (footerCanvas) {
-        const footerOffset = 10; // насколько поднимаем футер вверх (мм)
-        const footerY = pdfHeight - margin - footerImgHeight - footerOffset;
-      
-        // последняя страница
-        const lastPageIndex = pageContents.length - 1;
-      
-        // если на последней странице контент залезает в зону футера, добавляем новую страницу
-        const items = pageContents[lastPageIndex];
-        const lastBottom = items.length
-          ? Math.max(...items.map(it => it.y + it.height))
-          : margin;
-      
-        const footerSafeTop = footerY - 3; // небольшой зазор
-      
-        if (lastBottom > footerSafeTop) {
-          pageContents.push([]);
-        }
-      
-        const finalLastIndex = pageContents.length - 1;
-      
-        pageContents[finalLastIndex].push({
-          canvas: footerCanvas,
-          y: footerY,
-          width: footerImgWidth,
-          height: footerImgHeight,
-          __isFooter: true,
-        });
-      }
-
       const totalPages = pageContents.length;
       
-      for (let p = 0; p < pageContents.length; p++) {
-        if (p > 0) pdf.addPage();
-        
-        const items = pageContents[p];
-        for (const item of items) {
+for (let p = 0; p < pageContents.length; p++) {
+  if (p > 0) pdf.addPage();
 
-          const imgData = item.canvas.toDataURL('image/png');
-          pdf.addImage(imgData, 'PNG', margin, item.y, item.width, item.height);
-        }
+  const items = pageContents[p];
 
-              // кликабельная ссылка поверх футера (только на странице, где он есть)
-      const footerItem = items.find(it => it.__isFooter);
-      if (footerItem) {
-        const linkUrl = 'https://julietsapova.com/';
-        const linkW = 90;
-        const linkH = 8;
-        const linkX = (pdfWidth - linkW) / 2;
-      
-        // лучше привязаться к реальной позиции футера
-        const linkY = footerItem.y + footerItem.height - 12;
-      
-        pdf.link(linkX, linkY, linkW, linkH, { url: linkUrl });
-      }
+  // 1. рисуем весь контент страницы
+  for (const item of items) {
+    const imgData = item.canvas.toDataURL('image/png');
+    pdf.addImage(imgData, 'PNG', margin, item.y, item.width, item.height);
+  }
 
-        
-        pdf.setFontSize(9);
-        pdf.setTextColor(150, 150, 150);
-      pdf.text((p + 1) + ' / ' + totalPages, pdfWidth - margin, pdfHeight - 10, { align: 'right' });
-      }
+  // 2. футер — ТОЛЬКО на последнюю страницу
+  if (footerCanvas && p === pageContents.length - 1) {
+    const footerY = pdfHeight - margin - footerImgHeight - footerOffset;
+    const footerImgData = footerCanvas.toDataURL('image/png');
+    pdf.addImage(
+      footerImgData,
+      'PNG',
+      margin,
+      footerY,
+      footerImgWidth,
+      footerImgHeight
+    );
+
+    // кликабельная ссылка
+    pdf.link(
+      (pdfWidth - 90) / 2,
+      footerY + footerImgHeight - 12,
+      90,
+      8,
+      { url: 'https://julietsapova.com/' }
+    );
+  }
+
+  // 3. номер страницы
+  pdf.setFontSize(9);
+  pdf.setTextColor(150, 150, 150);
+  pdf.text(
+    `${p + 1} / ${pageContents.length}`,
+    pdfWidth - margin,
+    pdfHeight - 8,
+    { align: 'right' }
+  );
+}
+
       
       pdf.save('Double_Sales_Report.pdf');
     } catch (error) {
@@ -544,24 +533,22 @@ if (imgHeight <= (maxPageY - margin)) {
         
         {/* ДОХОДЫ - всё в одной секции чтобы не разрывалось */}
         <div className="pdf-section" style={{ marginBottom: 12, backgroundColor: 'white' }}>
-          <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold', marginBottom: 2 }}>ДОХОДЫ</div>
-          
+        <Piece style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold', marginBottom: 2 }}>ДОХОДЫ</Piece>          
           {/* Консервативный */}
-          <div style={{ backgroundColor: '#F97316', color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>СЦЕНАРИЙ: КОНСЕРВАТИВНЫЙ</div>
-          <Row label="Продаж ТР за год" value={Math.round(results.scenarios.conservative.totalTR)} />
+        <Piece style={{ backgroundColor: '#F97316', color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>СЦЕНАРИЙ: КОНСЕРВАТИВНЫЙ</Piece>          <Row label="Продаж ТР за год" value={Math.round(results.scenarios.conservative.totalTR)} />
           <Row label="Продаж ФЛ за год" value={results.scenarios.conservative.totalFL.toFixed(1)} />
           <Row label="Выручка за год" value={formatCur(results.scenarios.conservative.totalRev)} bold />
           <Row label="Чистая прибыль" value={formatCur(results.scenarios.conservative.yearProfit)} bold />
           
           {/* Реалистичный */}
-          <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>СЦЕНАРИЙ: РЕАЛИСТИЧНЫЙ</div>
+        <Piece style={{ backgroundColor: COLORS.primary, color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>СЦЕНАРИЙ: РЕАЛИСТИЧНЫЙ</Piece>
           <Row label="Продаж ТР за год" value={Math.round(results.scenarios.realistic.totalTR)} />
           <Row label="Продаж ФЛ за год" value={results.scenarios.realistic.totalFL.toFixed(1)} />
           <Row label="Выручка за год" value={formatCur(results.scenarios.realistic.totalRev)} bold />
           <Row label="Чистая прибыль" value={formatCur(results.scenarios.realistic.yearProfit)} bold />
           
           {/* Оптимистичный */}
-          <div style={{ backgroundColor: '#22C55E', color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>СЦЕНАРИЙ: ОПТИМИСТИЧНЫЙ</div>
+        <Piece style={{ backgroundColor: '#22C55E', color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold', marginTop: 10 }}>СЦЕНАРИЙ: ОПТИМИСТИЧНЫЙ</Piece>
           <Row label="Продаж ТР за год" value={Math.round(results.scenarios.optimistic.totalTR)} />
           <Row label="Продаж ФЛ за год" value={results.scenarios.optimistic.totalFL.toFixed(1)} />
           <Row label="Выручка за год" value={formatCur(results.scenarios.optimistic.totalRev)} bold />
