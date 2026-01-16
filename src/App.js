@@ -182,7 +182,6 @@ const DoubleSalesCalculator = () => {
       let pageNum = 1;
       const pageContents = [[]];
       
-      // Рендерим каждую секцию отдельно и распределяем по страницам
       for (let i = 0; i < sections.length; i++) {
         const section = sections[i];
         const canvas = await html2canvas(section, { 
@@ -195,8 +194,7 @@ const DoubleSalesCalculator = () => {
         const imgWidth = pdfWidth - margin * 2;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
         
-        // Если секция не помещается на текущую страницу — переходим на новую
-        if (currentY + imgHeight > pdfHeight - margin && currentY > margin) {
+        if (currentY + imgHeight > pdfHeight - margin - 15 && currentY > margin) {
           pageNum++;
           pageContents.push([]);
           currentY = margin;
@@ -209,12 +207,11 @@ const DoubleSalesCalculator = () => {
           height: imgHeight
         });
         
-        currentY += imgHeight + 5;
+        currentY += imgHeight + 3;
       }
       
       const totalPages = pageContents.length;
       
-      // Отрисовываем страницы
       for (let p = 0; p < pageContents.length; p++) {
         if (p > 0) pdf.addPage();
         
@@ -224,10 +221,9 @@ const DoubleSalesCalculator = () => {
           pdf.addImage(imgData, 'PNG', margin, item.y, item.width, item.height);
         }
         
-        // Номер страницы — используем только цифры чтобы избежать проблем с кириллицей
         pdf.setFontSize(9);
         pdf.setTextColor(150, 150, 150);
-        pdf.text(String(p + 1) + ' / ' + String(totalPages), pdfWidth - margin, pdfHeight - 5, { align: 'right' });
+        pdf.text((p + 1) + ' / ' + totalPages, pdfWidth - margin, pdfHeight - 5, { align: 'right' });
       }
       
       pdf.save('Double_Sales_Raschet.pdf');
@@ -241,9 +237,9 @@ const DoubleSalesCalculator = () => {
 
   const resetCalc = () => setCalculated(false);
   const formatNum = (n) => !isFinite(n) ? '—' : n >= 1e6 ? (n/1e6).toFixed(1)+'М' : n >= 1e3 ? (n/1e3).toFixed(1)+'К' : Math.round(n).toLocaleString('ru');
-  const formatCur = (n) => !isFinite(n) ? '—' : new Intl.NumberFormat('ru-RU').format(Math.round(n)) + ' P';
+  const formatCur = (n) => !isFinite(n) ? '—' : new Intl.NumberFormat('ru-RU').format(Math.round(n)) + ' ₽';
 
-  // PDF Report Component
+  // PDF Report Component - русский текст, html2canvas отрендерит кириллицу
   const PDFReport = React.forwardRef(({ results, fixedExpenses, variableExpenses, startupExpenses }, ref) => {
     if (!results) return null;
     
@@ -254,7 +250,7 @@ const DoubleSalesCalculator = () => {
     const showMaxSales = results.p.maxFlagshipSales !== 999;
     
     const Section = ({ title, children }) => (
-      <div className="pdf-section" style={{ marginBottom: 15, backgroundColor: 'white' }}>
+      <div className="pdf-section" style={{ marginBottom: 12, backgroundColor: 'white' }}>
         <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>{title}</div>
         {children}
       </div>
@@ -268,117 +264,117 @@ const DoubleSalesCalculator = () => {
     );
     
     const ScenarioBlock = ({ name, data, color }) => (
-      <div className="pdf-section" style={{ marginBottom: 15, backgroundColor: 'white' }}>
+      <div className="pdf-section" style={{ marginBottom: 12, backgroundColor: 'white' }}>
         <div style={{ backgroundColor: color, color: 'white', padding: '8px 16px', fontSize: 13, fontWeight: 'bold' }}>{name}</div>
-        <Row label="Prodazh TR za god" value={Math.round(data.totalTR)} />
-        <Row label="Prodazh FL za god" value={data.totalFL.toFixed(1)} />
-        <Row label="Vyruchka za god" value={formatCur(data.totalRev)} bold />
-        <Row label="Chistaya pribyl" value={formatCur(data.yearProfit)} bold />
+        <Row label="Продаж ТР за год" value={Math.round(data.totalTR)} />
+        <Row label="Продаж ФЛ за год" value={data.totalFL.toFixed(1)} />
+        <Row label="Выручка за год" value={formatCur(data.totalRev)} bold />
+        <Row label="Чистая прибыль" value={formatCur(data.yearProfit)} bold />
       </div>
     );
 
     return (
       <div ref={ref} style={{ width: 794, padding: 20, backgroundColor: 'white', fontFamily: 'Arial, sans-serif', fontSize: 12, color: '#333' }}>
         {/* Header */}
-        <div className="pdf-section" style={{ backgroundColor: COLORS.primary, color: 'white', padding: '25px 20px', textAlign: 'center', marginBottom: 15 }}>
+        <div className="pdf-section" style={{ backgroundColor: COLORS.primary, color: 'white', padding: '25px 20px', textAlign: 'center', marginBottom: 12 }}>
           <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 5 }}>DOUBLE SALES</div>
-          <div style={{ fontSize: 14, opacity: 0.9 }}>Sistema prodazh</div>
+          <div style={{ fontSize: 14, opacity: 0.9 }}>Система продаж</div>
         </div>
         
         {/* ПРОДУКТЫ */}
-        <Section title="PRODUKTY">
-          <Row label="Cena tripvaera" value={formatCur(results.p.tripwirePrice)} />
-          <Row label="Cena flagmana" value={formatCur(results.p.flagshipPrice)} />
-          {showUpsell && <Row label="Doprodazhi" value={formatCur(results.p.upsellPrice)} />}
-          {showMaxSales && <Row label="Mest na FL/mes" value={results.p.maxFlagshipSales} />}
+        <Section title="ПРОДУКТЫ">
+          <Row label="Цена трипваера" value={formatCur(results.p.tripwirePrice)} />
+          <Row label="Цена флагмана" value={formatCur(results.p.flagshipPrice)} />
+          {showUpsell && <Row label="Допродажи" value={formatCur(results.p.upsellPrice)} />}
+          {showMaxSales && <Row label="Мест на ФЛ/мес" value={results.p.maxFlagshipSales} />}
         </Section>
         
         {/* ОХВАТЫ */}
-        <Section title="OHVATY">
-          <Row label="Sredniy ohvat publikacii" value={formatNum(results.r.avgReelsReach)} />
-          <Row label="Publikaciy v nedelyu" value={results.r.reelsPerWeek} />
-          <Row label="Rost ohvatov/mes" value={results.r.monthlyGrowth + '%'} />
+        <Section title="ОХВАТЫ">
+          <Row label="Средний охват публикации" value={formatNum(results.r.avgReelsReach)} />
+          <Row label="Публикаций в неделю" value={results.r.reelsPerWeek} />
+          <Row label="Рост охватов/мес" value={results.r.monthlyGrowth + '%'} />
         </Section>
         
         {/* КОНВЕРСИИ */}
-        <Section title="KONVERSII VORONKI">
-          <Row label="Kontent - perehod v bot" value={(results.conv.reelsToBot * 100).toFixed(1) + '%'} />
-          <Row label="Bot - prosmotr LM" value={(results.conv.botToLM * 100).toFixed(0) + '%'} />
-          <Row label="LM - pokupka TR" value={(results.conv.lmToTR * 100).toFixed(1) + '%'} />
-          <Row label="TR - zayavka na FL" value={(results.conv.trToApplication * 100).toFixed(0) + '%'} />
-          <Row label="Zayavka - pokupka FL" value={(results.conv.applicationToFL * 100).toFixed(0) + '%'} />
-          {results.conv.lmToApplicationDirect > 0 && <Row label="LM/Kontent - zayavka napryamuyu" value={(results.conv.lmToApplicationDirect * 100).toFixed(1) + '%'} />}
+        <Section title="КОНВЕРСИИ ВОРОНКИ">
+          <Row label="Контент → переход в бот" value={(results.conv.reelsToBot * 100).toFixed(1) + '%'} />
+          <Row label="Бот → просмотр ЛМ" value={(results.conv.botToLM * 100).toFixed(0) + '%'} />
+          <Row label="ЛМ → покупка ТР" value={(results.conv.lmToTR * 100).toFixed(1) + '%'} />
+          <Row label="ТР → заявка на ФЛ" value={(results.conv.trToApplication * 100).toFixed(0) + '%'} />
+          <Row label="Заявка → покупка ФЛ" value={(results.conv.applicationToFL * 100).toFixed(0) + '%'} />
+          {results.conv.lmToApplicationDirect > 0 && <Row label="ЛМ/Контент → заявка напрямую" value={(results.conv.lmToApplicationDirect * 100).toFixed(1) + '%'} />}
         </Section>
         
         {/* РЕЗУЛЬТАТЫ */}
-        <Section title="REZULTATY (v nedelyu)">
-          <Row label="Ohvatov" value={formatNum(results.weeklyReach)} />
-          <Row label="Podpisok v bot" value={results.weeklyBotSubs.toFixed(1)} />
-          <Row label="Prosmotrov LM" value={results.weeklyLMViews.toFixed(1)} />
-          <Row label="Prodazh TR" value={results.weeklyTRSales.toFixed(2)} />
-          <Row label="Zayavok na FL" value={results.weeklyApps.toFixed(2)} />
-          <Row label="Prodazh FL" value={results.weeklyFLSales.toFixed(3)} />
-          <Row label="Vyruchka v nedelyu" value={formatCur(results.weeklyRevTotal)} bold highlight />
-          <Row label="Vyruchka v mesyac" value={formatCur(results.monthlyRev)} bold highlight />
-          <Row label="Pribyl v mesyac" value={formatCur(results.monthlyProfit)} bold highlight />
+        <Section title="РЕЗУЛЬТАТЫ (в неделю)">
+          <Row label="Охватов" value={formatNum(results.weeklyReach)} />
+          <Row label="Подписок в бот" value={results.weeklyBotSubs.toFixed(1)} />
+          <Row label="Просмотров ЛМ" value={results.weeklyLMViews.toFixed(1)} />
+          <Row label="Продаж ТР" value={results.weeklyTRSales.toFixed(2)} />
+          <Row label="Заявок на ФЛ" value={results.weeklyApps.toFixed(2)} />
+          <Row label="Продаж ФЛ" value={results.weeklyFLSales.toFixed(3)} />
+          <Row label="Выручка в неделю" value={formatCur(results.weeklyRevTotal)} bold highlight />
+          <Row label="Выручка в месяц" value={formatCur(results.monthlyRev)} bold highlight />
+          <Row label="Прибыль в месяц" value={formatCur(results.monthlyProfit)} bold highlight />
         </Section>
         
         {/* ЦЕЛИ */}
-        <Section title="SKOLKO NUZHNO DLYA CELEY">
+        <Section title="СКОЛЬКО НУЖНО ДЛЯ ЦЕЛЕЙ">
           {[
-            { name: 'Pervaya prodazha TR', reach: results.reachFirstTR },
-            { name: 'Pervaya prodazha FL', reach: results.reachFirstFL },
-            { name: '30 zayavok na FL', reach: results.reach30Apps },
-            { name: '100 000 P', reach: results.reach100k },
-            { name: '1 000 000 P', reach: results.reach1M },
+            { name: 'Первая продажа ТР', reach: results.reachFirstTR },
+            { name: 'Первая продажа ФЛ', reach: results.reachFirstFL },
+            { name: '30 заявок на ФЛ', reach: results.reach30Apps },
+            { name: '100 000 ₽', reach: results.reach100k },
+            { name: '1 000 000 ₽', reach: results.reach1M },
           ].map((g, i) => {
             const pubs = results.r.avgReelsReach > 0 ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach)) : 1;
             const weeks = results.r.avgReelsReach > 0 && results.r.reelsPerWeek > 0 ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach / results.r.reelsPerWeek)) : 1;
-            return <Row key={i} label={g.name} value={formatNum(g.reach) + ' ohv / ' + pubs + ' publ / ' + weeks + ' ned'} />;
+            return <Row key={i} label={g.name} value={formatNum(g.reach) + ' охв / ' + pubs + ' публ / ' + weeks + ' нед'} />;
           })}
         </Section>
         
         {/* РАСХОДЫ */}
-        <Section title="RASHODY">
+        <Section title="РАСХОДЫ">
           {nonZeroFixed.length > 0 && (
             <>
-              <div style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11 }}>Postoyannye/mes:</div>
+              <div style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11 }}>Постоянные/мес:</div>
               {nonZeroFixed.map((e, i) => <Row key={i} label={e.name} value={formatCur(num(e.amount))} />)}
             </>
           )}
           {nonZeroVar.length > 0 && (
             <>
-              <div style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11, marginTop: 5 }}>Peremennye:</div>
+              <div style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11, marginTop: 5 }}>Переменные:</div>
               {nonZeroVar.map((e, i) => <Row key={i} label={e.name} value={num(e.percent) + '%'} />)}
             </>
           )}
           {nonZeroStartup.length > 0 && (
             <>
-              <div style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11, marginTop: 5 }}>Startovye:</div>
+              <div style={{ padding: '6px 16px', fontWeight: 'bold', color: COLORS.primary, fontSize: 11, marginTop: 5 }}>Стартовые:</div>
               {nonZeroStartup.map((e, i) => <Row key={i} label={e.name} value={formatCur(num(e.amount))} />)}
             </>
           )}
           <div style={{ marginTop: 8 }}>
-            <Row label="ITOGO postoyannye/mes" value={formatCur(results.totalFixed)} bold highlight />
-            <Row label="ITOGO peremennye" value={(results.totalVarPercent * 100).toFixed(1) + '%'} bold highlight />
-            <Row label="ITOGO startovye" value={formatCur(results.totalStartup)} bold highlight />
-            <Row label="Okupaemost" value={results.paybackWeeks === Infinity ? '—' : results.paybackWeeks + ' ned'} bold highlight />
+            <Row label="ИТОГО постоянные/мес" value={formatCur(results.totalFixed)} bold highlight />
+            <Row label="ИТОГО переменные" value={(results.totalVarPercent * 100).toFixed(1) + '%'} bold highlight />
+            <Row label="ИТОГО стартовые" value={formatCur(results.totalStartup)} bold highlight />
+            <Row label="Окупаемость" value={results.paybackWeeks === Infinity ? '—' : results.paybackWeeks + ' нед'} bold highlight />
           </div>
         </Section>
         
-        {/* СЦЕНАРИИ */}
-        <div className="pdf-section" style={{ marginBottom: 15 }}>
-          <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>PROGNOZ NA GOD</div>
+        {/* ПРОГНОЗ */}
+        <div className="pdf-section" style={{ marginBottom: 12 }}>
+          <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>ПРОГНОЗ НА ГОД</div>
         </div>
         
-        <ScenarioBlock name="SCENARIY: KONSERVATIVNYY" data={results.scenarios.conservative} color="#F97316" />
-        <ScenarioBlock name="SCENARIY: REALISTICHNYY" data={results.scenarios.realistic} color={COLORS.primary} />
-        <ScenarioBlock name="SCENARIY: OPTIMISTICHNYY" data={results.scenarios.optimistic} color="#22C55E" />
+        <ScenarioBlock name="СЦЕНАРИЙ: КОНСЕРВАТИВНЫЙ" data={results.scenarios.conservative} color="#F97316" />
+        <ScenarioBlock name="СЦЕНАРИЙ: РЕАЛИСТИЧНЫЙ" data={results.scenarios.realistic} color={COLORS.primary} />
+        <ScenarioBlock name="СЦЕНАРИЙ: ОПТИМИСТИЧНЫЙ" data={results.scenarios.optimistic} color="#22C55E" />
         
         {/* Footer */}
         <div className="pdf-section" style={{ marginTop: 20, paddingTop: 15, borderTop: '2px solid ' + COLORS.primary, textAlign: 'center' }}>
-          <div style={{ color: '#666', fontSize: 10, marginBottom: 3 }}>Rasschitano s pomoshchyu kalkulyatora Double Sales</div>
-          <div style={{ color: COLORS.primary, fontSize: 10, fontWeight: 'bold' }}>@julie_tsapova | julietsapova.com</div>
+          <div style={{ color: '#666', fontSize: 11, marginBottom: 5 }}>Рассчитано с помощью калькулятора Double Sales</div>
+          <a href="https://julietsapova.com/" target="_blank" rel="noopener noreferrer" style={{ color: COLORS.primary, fontSize: 11, fontWeight: 'bold', textDecoration: 'underline' }}>@julie_tsapova | julietsapova.com</a>
         </div>
       </div>
     );
