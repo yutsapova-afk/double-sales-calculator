@@ -84,29 +84,30 @@ const PDFReport = React.forwardRef(({ results, products, conversions, reach, fix
   const showUpsell = results.p.upsellPrice > 0;
   const showMaxSales = results.p.maxFlagshipSales !== 999;
   
-  const Section = ({ title, children }) => (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '12px 16px', fontSize: 16, fontWeight: 'bold', marginBottom: 2 }}>{title}</div>
-      {children}
-    </div>
-  );
+const Section = ({ title, children }) => (
+  <div data-pdf-block style={{ marginBottom: 20 }}>
+    <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '12px 16px', fontSize: 16, fontWeight: 'bold', marginBottom: 2 }}>{title}</div>
+    {children}
+  </div>
+);
+
   
   const Row = ({ label, value, bold, highlight }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px', backgroundColor: highlight ? COLORS.primary : COLORS.accent, color: highlight ? 'white' : '#333', borderBottom: '1px solid white' }}>
-      <span style={{ fontWeight: bold ? 'bold' : 'normal' }}>{label}</span>
-      <span style={{ fontWeight: 'bold' }}>{value}</span>
-    </div>
-  );
+  <div data-pdf-block style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px', backgroundColor: highlight ? COLORS.primary : COLORS.accent, color: highlight ? 'white' : '#333', borderBottom: '1px solid white' }}>
+    <span style={{ fontWeight: bold ? 'bold' : 'normal' }}>{label}</span>
+    <span style={{ fontWeight: 'bold' }}>{value}</span>
+  </div>
+);
   
   const ScenarioBlock = ({ name, data, color }) => (
-    <div style={{ marginBottom: 15 }}>
-      <div style={{ backgroundColor: color, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>{name}</div>
-      <Row label="Продаж ТР за год" value={Math.round(data.totalTR)} />
-      <Row label="Продаж ФЛ за год" value={data.totalFL.toFixed(1)} />
-      <Row label="Выручка за год" value={formatCur(data.totalRev)} bold />
-      <Row label="Чистая прибыль" value={formatCur(data.yearProfit)} bold />
-    </div>
-  );
+  <div data-pdf-block style={{ marginBottom: 15 }}>
+    <div style={{ backgroundColor: color, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>{name}</div>
+    <Row label="Продаж ТР за год" value={Math.round(data.totalTR)} />
+    <Row label="Продаж ФЛ за год" value={data.totalFL.toFixed(1)} />
+    <Row label="Выручка за год" value={formatCur(data.totalRev)} bold />
+    <Row label="Чистая прибыль" value={formatCur(data.yearProfit)} bold />
+  </div>
+);
 
   return (
     <div ref={ref} style={{ width: 794, padding: 40, backgroundColor: 'white', fontFamily: 'Arial, sans-serif', fontSize: 14, color: '#333' }}>
@@ -169,7 +170,6 @@ const PDFReport = React.forwardRef(({ results, products, conversions, reach, fix
         })}
       </Section>
 
-      <div style={{ pageBreakBefore: 'always', paddingTop: 20 }}></div>
       
       {/* РАСХОДЫ */}
       <Section title="РАСХОДЫ">
@@ -304,59 +304,137 @@ const DoubleSalesCalculator = () => {
   };
 
   const generatePDF = async () => {
-    if (!results || !pdfRef.current) return;
-    setGenerating(true);
-    
-    try {
-      const html2canvas = (await import('html2canvas')).default;
-      const { jsPDF } = await import('jspdf');
-      
-      const element = pdfRef.current;
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false });
-      
-     
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = pdfWidth / imgWidth;
-      const scaledHeight = imgHeight * ratio;
-      
-      // Считаем количество страниц
-      const totalPages = Math.ceil(scaledHeight / pdfHeight);
-      
-      // Добавляем страницы
-      for (let page = 0; page < totalPages; page++) {
-        if (page > 0) pdf.addPage();
-        
-        const srcY = page * (pdfHeight / ratio);
-        const srcHeight = Math.min(pdfHeight / ratio, imgHeight - srcY);
-        
-        // Создаём canvas для текущей страницы
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width = imgWidth;
-        pageCanvas.height = srcHeight;
-        const ctx = pageCanvas.getContext('2d');
-        ctx.drawImage(canvas, 0, srcY, imgWidth, srcHeight, 0, 0, imgWidth, srcHeight);
-        
-        const pageImgData = pageCanvas.toDataURL('image/png');
-        pdf.addImage(pageImgData, 'PNG', 0, 0, pdfWidth, srcHeight * ratio);
-        
-        // Добавляем нумерацию страниц
-        pdf.setFontSize(10);
-        pdf.setTextColor(150, 150, 150);
-        pdf.text(`Страница ${page + 1} из ${totalPages}`, pdfWidth - 15, pdfHeight - 10, { align: 'right' });
-      }
-      
-      pdf.save('Double_Sales_Расчёт.pdf');
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      alert('Ошибка при создании PDF. Попробуйте ещё раз.');
+  if (!results || !pdfRef.current) return;
+  setGenerating(true);
+
+  const PAGE_W = 794;
+  const PAGE_H = Math.round(PAGE_W * (297 / 210)); // ~1123
+  const PAD = 40;          // как в PDFReport padding: 40
+  const FOOTER_H = 34;     // место под нумерацию
+
+  try {
+    const html2canvas = (await import('html2canvas')).default;
+    const { jsPDF } = await import('jspdf');
+
+    const src = pdfRef.current;
+
+    // Offscreen зона, чтобы не ломать UI
+    const offscreen = document.createElement('div');
+    offscreen.style.position = 'fixed';
+    offscreen.style.left = '-100000px';
+    offscreen.style.top = '0';
+    offscreen.style.width = `${PAGE_W}px`;
+    offscreen.style.background = 'white';
+    offscreen.style.zIndex = '-1';
+    document.body.appendChild(offscreen);
+
+    // Клонируем отчёт
+    const reportClone = src.cloneNode(true);
+    offscreen.appendChild(reportClone);
+
+    // "Атомы" для переноса — всё с data-pdf-block
+    const blocks = Array.from(reportClone.querySelectorAll('[data-pdf-block]'));
+
+    if (blocks.length === 0) {
+      throw new Error('PDF blocks not found. Add data-pdf-block attributes.');
     }
-    
-    setGenerating(false);
-  };
+
+    // очищаем клон, будем собирать страницы
+    reportClone.innerHTML = '';
+
+    const pages = [];
+
+    const makePage = () => {
+      const page = document.createElement('div');
+      page.style.width = `${PAGE_W}px`;
+      page.style.height = `${PAGE_H}px`;
+      page.style.background = 'white';
+      page.style.position = 'relative';
+      page.style.overflow = 'hidden';
+
+      const content = document.createElement('div');
+      content.style.position = 'absolute';
+      content.style.left = '0';
+      content.style.top = '0';
+      content.style.right = '0';
+      content.style.bottom = `${FOOTER_H}px`;
+      content.style.overflow = 'hidden';
+      content.style.padding = `${PAD}px`;
+
+      page.appendChild(content);
+
+      offscreen.appendChild(page);
+      pages.push({ page, content });
+      return { page, content };
+    };
+
+    const fits = (contentEl) => contentEl.scrollHeight <= contentEl.clientHeight;
+
+    let { content } = makePage();
+
+    for (const block of blocks) {
+      content.appendChild(block);
+
+      if (!fits(content)) {
+        content.removeChild(block);
+
+        // если блок выше страницы — кладём как есть, иначе будет вечный цикл
+        if (content.childElementCount === 0) {
+          content.appendChild(block);
+        } else {
+          ({ content } = makePage());
+          content.appendChild(block);
+        }
+      }
+    }
+
+    // футеры (кириллица норм, т.к. это HTML, а не pdf.text)
+    const totalPages = pages.length;
+    pages.forEach((p, idx) => {
+      const footer = document.createElement('div');
+      footer.style.position = 'absolute';
+      footer.style.left = '0';
+      footer.style.right = '0';
+      footer.style.bottom = '10px';
+      footer.style.textAlign = 'right';
+      footer.style.paddingRight = '40px';
+      footer.style.fontFamily = 'Arial, sans-serif';
+      footer.style.fontSize = '10px';
+      footer.style.color = 'rgb(150,150,150)';
+      footer.textContent = `Страница ${idx + 1} из ${totalPages}`;
+      p.page.appendChild(footer);
+    });
+
+    // PDF
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+
+    for (let i = 0; i < pages.length; i++) {
+      const canvas = await html2canvas(pages[i].page, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      const ratio = pdfWidth / canvas.width;
+      const drawHeight = canvas.height * ratio;
+
+      if (i > 0) pdf.addPage();
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, drawHeight);
+    }
+
+    pdf.save('Double_Sales_Расчёт.pdf');
+
+    document.body.removeChild(offscreen);
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    alert('Ошибка при создании PDF. Попробуйте ещё раз.');
+  }
+
+  setGenerating(false);
+};
+
 
   const resetCalc = () => setCalculated(false);
   const formatNum = (n) => !isFinite(n) ? '—' : n >= 1e6 ? (n/1e6).toFixed(1)+'М' : n >= 1e3 ? (n/1e3).toFixed(1)+'К' : Math.round(n).toLocaleString('ru');
