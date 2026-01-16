@@ -172,7 +172,7 @@ const DoubleSalesCalculator = () => {
       
       const element = pdfRef.current;
       const footerEl = element.querySelector('#pdf-footer');
-      const pieces = Array.from(element.querySelectorAll('.pdf-piece'));
+      const pieces = Array.from(element.querySelectorAll('.pdf-section'));
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -234,7 +234,7 @@ if (imgHeight <= (maxPageY - margin)) {
     height: imgHeight
   });
 
-  currentY += imgHeight + 6;
+  currentY += imgHeight + 3;
 } else {
   // секция выше одной страницы: режем canvas на куски по высоте
   const pxPerMm = canvas.height / imgHeight; // сколько пикселей приходится на 1 мм в PDF
@@ -355,7 +355,7 @@ for (let p = 0; p < pageContents.length; p++) {
     const showMaxSales = results.p.maxFlagshipSales !== 999;
     
     const Piece = ({ children, style }) => (
-        <div className="pdf-piece" style={{ backgroundColor: 'white', ...style }}>
+        <div style={{ backgroundColor: 'white', ...style }}>
           {children}
         </div>
       );
@@ -373,10 +373,12 @@ for (let p = 0; p < pageContents.length; p++) {
 
       const Section = ({ title, children }) => (
         <div
+          className="pdf-section"
           style={{
-            marginTop: title && BIG_TITLES.has(title) ? 18 : 12,
-            marginBottom: 12,
-            backgroundColor: 'white'
+            backgroundColor: 'white',
+            marginTop: 0,
+            marginBottom: 0,
+            paddingTop: title && BIG_TITLES.has(title) ? 10 : 0
           }}
         >
           {title ? (
@@ -392,7 +394,6 @@ for (let p = 0; p < pageContents.length; p++) {
               {title}
             </Piece>
           ) : null}
-      
           {children}
         </div>
       );
