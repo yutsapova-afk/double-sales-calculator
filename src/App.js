@@ -379,10 +379,10 @@ const DoubleSalesCalculator = () => {
         </div>
         
         {/* Footer */}
-      <div style={{ marginTop: 40, paddingTop: 20, borderTop: `2px solid ${COLORS.primary}`, textAlign: 'center' }}>
-        <div style={{ color: '#666', fontSize: 12, marginBottom: 5 }}>Рассчитано с помощью калькулятора Double Sales</div>
-        <a href="https://julietsapova.com/" style={{ color: COLORS.primary, fontSize: 12, fontWeight: 'bold', textDecoration: 'none' }}>@julie_tsapova | julietsapova.com</a>
-      </div>
+        <div style={{ marginTop: 40, paddingTop: 20, borderTop: `2px solid ${COLORS.primary}`, textAlign: 'center' }}>
+          <div style={{ color: '#666', fontSize: 12, marginBottom: 5 }}>Рассчитано с помощью калькулятора Double Sales</div>
+          <a href="https://julietsapova.com/" style={{ color: COLORS.primary, fontSize: 12, fontWeight: 'bold', textDecoration: 'none' }}>@julie_tsapova | julietsapova.com</a>
+        </div>
       </div>
     );
   });
