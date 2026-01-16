@@ -3,13 +3,13 @@ import { Plus, Trash2, Calculator, TrendingUp, DollarSign, Target, ChevronRight,
 
 const COLORS = { primary: '#1F4E79', accent: '#E8F4FD' };
 
-const TabBtn = ({ id, activeTab, setActiveTab, icon: Icon, label }) => (
+const TabBtn = ({ id, activeTab, setActiveTab, icon: Icon, label }: { id: string; activeTab: string; setActiveTab: (id: string) => void; icon: React.ElementType; label: string }) => (
   <button onClick={() => setActiveTab(id)} className="flex items-center gap-2 px-4 py-3 rounded-xl font-medium whitespace-nowrap transition-all" style={activeTab === id ? { backgroundColor: COLORS.primary, color: 'white' } : { backgroundColor: 'white', color: COLORS.primary, border: '1px solid #1F4E7930' }}>
     <Icon size={18} /><span className="hidden sm:inline">{label}</span>
   </button>
 );
 
-const Input = ({ label, value, onChange, suffix, hint }) => (
+const Input = ({ label, value, onChange, suffix, hint }: { label: string; value: string; onChange: (v: string) => void; suffix?: string; hint?: string }) => (
   <div className="space-y-1">
     <label className="text-sm font-medium" style={{ color: COLORS.primary }}>{label}</label>
     <div className="relative">
@@ -20,7 +20,7 @@ const Input = ({ label, value, onChange, suffix, hint }) => (
   </div>
 );
 
-const ResultCard = ({ icon: Icon, label, value, sub, hl }) => (
+const ResultCard = ({ icon: Icon, label, value, sub, hl }: { icon: React.ElementType; label: string; value: string; sub?: string; hl?: boolean }) => (
   <div className="p-5 rounded-2xl shadow-lg" style={{ backgroundColor: hl ? COLORS.primary : 'white', color: hl ? 'white' : COLORS.primary }}>
     <div className="flex items-start justify-between">
       <div><p className="text-sm mb-1" style={{ opacity: 0.7 }}>{label}</p><p className="text-2xl font-bold">{value}</p>{sub && <p className="text-xs mt-1" style={{ opacity: 0.6 }}>{sub}</p>}</div>
@@ -29,7 +29,15 @@ const ResultCard = ({ icon: Icon, label, value, sub, hl }) => (
   </div>
 );
 
-const ExpenseRow = ({ expense, onUpdate, onRemove, isVar }) => (
+interface Expense {
+  id: number;
+  name: string;
+  amount?: string;
+  percent?: string;
+  hint?: string;
+}
+
+const ExpenseRow = ({ expense, onUpdate, onRemove, isVar }: { expense: Expense; onUpdate: (id: number, field: string, value: string) => void; onRemove: (id: number) => void; isVar?: boolean }) => (
   <div className="space-y-1">
     <div className="hidden sm:flex items-center gap-2 p-3 rounded-xl group" style={{ backgroundColor: COLORS.accent }}>
       <input type="text" value={expense.name} onChange={(e) => onUpdate(expense.id, 'name', e.target.value)} className="flex-1 px-3 py-2 bg-white border rounded-lg text-sm min-w-0" style={{ borderColor: COLORS.primary + '20', color: COLORS.primary }} />
@@ -49,8 +57,8 @@ const ExpenseRow = ({ expense, onUpdate, onRemove, isVar }) => (
   </div>
 );
 
-const RoadmapRow = ({ goal, reachN, note, hl, avgReach, reelsPerWeek }) => {
-  const formatNum = (n) => !isFinite(n) || n <= 0 ? '—' : n >= 1e6 ? (n/1e6).toFixed(1)+'М' : n >= 1e3 ? (n/1e3).toFixed(1)+'К' : Math.round(n).toLocaleString('ru');
+const RoadmapRow = ({ goal, reachN, note, hl, avgReach, reelsPerWeek }: { goal: string; reachN: number; note: string; hl?: boolean; avgReach: number; reelsPerWeek: number }) => {
+  const formatNum = (n: number) => !isFinite(n) || n <= 0 ? '—' : n >= 1e6 ? (n/1e6).toFixed(1)+'М' : n >= 1e3 ? (n/1e3).toFixed(1)+'К' : Math.round(n).toLocaleString('ru');
   const pubs = avgReach > 0 ? Math.max(1, Math.ceil(reachN / avgReach)) : 1;
   const weeks = avgReach > 0 && reelsPerWeek > 0 ? Math.max(1, Math.ceil(reachN / avgReach / reelsPerWeek)) : 1;
   return (
@@ -67,160 +75,220 @@ const RoadmapRow = ({ goal, reachN, note, hl, avgReach, reelsPerWeek }) => {
   );
 };
 
-const CalculateButton = ({ onClick, calculated }) => (
+const CalculateButton = ({ onClick, calculated }: { onClick: () => void; calculated: boolean }) => (
   <button onClick={onClick} className="w-full py-4 px-6 rounded-2xl text-white font-bold text-lg flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]" style={{ backgroundColor: calculated ? '#22C55E' : COLORS.primary }}>
     <Play size={24} fill="white" />
     {calculated ? 'Рассчитано! Нажмите снова при изменении' : 'РАССЧИТАТЬ'}
   </button>
 );
 
-// PDF Report Component
-const PDFReport = React.forwardRef(({ results, products, conversions, reach, fixedExpenses, variableExpenses, startupExpenses, num, formatCur, formatNum }, ref) => {
+interface Results {
+  p: { tripwirePrice: number; flagshipPrice: number; upsellPrice: number; maxFlagshipSales: number };
+  conv: { reelsToBot: number; botToLM: number; lmToTR: number; trToApplication: number; applicationToFL: number; lmToApplicationDirect: number };
+  r: { avgReelsReach: number; reelsPerWeek: number; monthlyGrowth: number };
+  totalFixed: number;
+  totalVarPercent: number;
+  totalStartup: number;
+  weeklyReach: number;
+  monthlyReachBase: number;
+  weeklyBotSubs: number;
+  weeklyLMViews: number;
+  weeklyTRSales: number;
+  weeklyApps: number;
+  weeklyFLSales: number;
+  weeklyRevTR: number;
+  weeklyRevFL: number;
+  weeklyRevTotal: number;
+  monthlyRev: number;
+  monthlyProfit: number;
+  reachFirstTR: number;
+  reachFirstFL: number;
+  reach30Apps: number;
+  reach100k: number;
+  reach1M: number;
+  scenarios: {
+    conservative: ScenarioData;
+    realistic: ScenarioData;
+    optimistic: ScenarioData;
+  };
+  totalInvestment: number;
+  paybackWeeks: number;
+}
+
+interface ScenarioData {
+  months: { m: number; reach: number; bot: number; tr: number; apps: number; fl: number; rev: number }[];
+  totalTR: number;
+  totalFL: number;
+  totalRev: number;
+  yearProfit: number;
+}
+
+// PDF Report Component - разбит на отдельные страницы
+interface PDFReportProps {
+  results: Results | null;
+  fixedExpenses: Expense[];
+  variableExpenses: Expense[];
+  startupExpenses: Expense[];
+  num: (val: string | number) => number;
+  formatCur: (n: number) => string;
+  formatNum: (n: number) => string;
+}
+
+const PDFReport = React.forwardRef<HTMLDivElement, PDFReportProps>(({ results, fixedExpenses, variableExpenses, startupExpenses, num, formatCur, formatNum }, ref) => {
   if (!results) return null;
   
-  const nonZeroFixed = fixedExpenses.filter(e => num(e.amount) > 0);
-  const nonZeroVar = variableExpenses.filter(e => num(e.percent) > 0);
-  const nonZeroStartup = startupExpenses.filter(e => num(e.amount) > 0);
+  const nonZeroFixed = fixedExpenses.filter(e => num(e.amount || '0') > 0);
+  const nonZeroVar = variableExpenses.filter(e => num(e.percent || '0') > 0);
+  const nonZeroStartup = startupExpenses.filter(e => num(e.amount || '0') > 0);
   const showUpsell = results.p.upsellPrice > 0;
   const showMaxSales = results.p.maxFlagshipSales !== 999;
   
-const Section = ({ title, children }) => (
-  <div data-pdf-block style={{ marginBottom: 20 }}>
-    <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '12px 16px', fontSize: 16, fontWeight: 'bold', marginBottom: 2 }}>{title}</div>
-    {children}
-  </div>
-);
-
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="pdf-section" style={{ marginBottom: 20 }}>
+      <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '12px 16px', fontSize: 16, fontWeight: 'bold', marginBottom: 2 }}>{title}</div>
+      {children}
+    </div>
+  );
   
-  const Row = ({ label, value, bold, highlight }) => (
-  <div data-pdf-block style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px', backgroundColor: highlight ? COLORS.primary : COLORS.accent, color: highlight ? 'white' : '#333', borderBottom: '1px solid white' }}>
-    <span style={{ fontWeight: bold ? 'bold' : 'normal' }}>{label}</span>
-    <span style={{ fontWeight: 'bold' }}>{value}</span>
-  </div>
-);
+  const Row = ({ label, value, bold, highlight }: { label: string; value: string; bold?: boolean; highlight?: boolean }) => (
+    <div className="pdf-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 16px', backgroundColor: highlight ? COLORS.primary : COLORS.accent, color: highlight ? 'white' : '#333', borderBottom: '1px solid white' }}>
+      <span style={{ fontWeight: bold ? 'bold' : 'normal' }}>{label}</span>
+      <span style={{ fontWeight: 'bold' }}>{value}</span>
+    </div>
+  );
   
-  const ScenarioBlock = ({ name, data, color }) => (
-  <div data-pdf-block style={{ marginBottom: 15 }}>
-    <div style={{ backgroundColor: color, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>{name}</div>
-    <Row label="Продаж ТР за год" value={Math.round(data.totalTR)} />
-    <Row label="Продаж ФЛ за год" value={data.totalFL.toFixed(1)} />
-    <Row label="Выручка за год" value={formatCur(data.totalRev)} bold />
-    <Row label="Чистая прибыль" value={formatCur(data.yearProfit)} bold />
-  </div>
-);
+  const ScenarioBlock = ({ name, data, color }: { name: string; data: ScenarioData; color: string }) => (
+    <div className="pdf-scenario" style={{ marginBottom: 15 }}>
+      <div style={{ backgroundColor: color, color: 'white', padding: '10px 16px', fontSize: 14, fontWeight: 'bold' }}>{name}</div>
+      <Row label="Продаж ТР за год" value={Math.round(data.totalTR).toString()} />
+      <Row label="Продаж ФЛ за год" value={data.totalFL.toFixed(1)} />
+      <Row label="Выручка за год" value={formatCur(data.totalRev)} bold />
+      <Row label="Чистая прибыль" value={formatCur(data.yearProfit)} bold />
+    </div>
+  );
 
+  // Страница 1: Заголовок + Продукты + Охваты + Конверсии + Результаты + Цели
+  // Страница 2: Расходы + Сценарии + Футер
+  
   return (
-    <div ref={ref} style={{ width: 794, padding: 40, backgroundColor: 'white', fontFamily: 'Arial, sans-serif', fontSize: 14, color: '#333' }}>
-      {/* Header */}
-      <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '30px 20px', textAlign: 'center', marginBottom: 30 }}>
-        <div style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 5 }}>DOUBLE SALES</div>
-        <div style={{ fontSize: 16, opacity: 0.9 }}>Система продаж</div>
+    <div ref={ref} style={{ width: 794, backgroundColor: 'white', fontFamily: 'Arial, sans-serif', fontSize: 14, color: '#333' }}>
+      {/* ===== СТРАНИЦА 1 ===== */}
+      <div className="pdf-page" style={{ padding: 40, minHeight: 1100, boxSizing: 'border-box', pageBreakAfter: 'always', pageBreakInside: 'avoid' }}>
+        {/* Header */}
+        <div style={{ backgroundColor: COLORS.primary, color: 'white', padding: '30px 20px', textAlign: 'center', marginBottom: 30 }}>
+          <div style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 5 }}>DOUBLE SALES</div>
+          <div style={{ fontSize: 16, opacity: 0.9 }}>Система продаж</div>
+        </div>
+        
+        {/* ПРОДУКТЫ */}
+        <Section title="ПРОДУКТЫ">
+          <Row label="Цена трипваера" value={formatCur(results.p.tripwirePrice)} />
+          <Row label="Цена флагмана" value={formatCur(results.p.flagshipPrice)} />
+          {showUpsell && <Row label="Допродажи" value={formatCur(results.p.upsellPrice)} />}
+          {showMaxSales && <Row label="Мест на ФЛ/мес" value={results.p.maxFlagshipSales.toString()} />}
+        </Section>
+        
+        {/* ОХВАТЫ */}
+        <Section title="ОХВАТЫ">
+          <Row label="Средний охват публикации" value={formatNum(results.r.avgReelsReach)} />
+          <Row label="Публикаций в неделю" value={results.r.reelsPerWeek.toString()} />
+          <Row label="Рост охватов/мес" value={results.r.monthlyGrowth + '%'} />
+        </Section>
+        
+        {/* КОНВЕРСИИ */}
+        <Section title="КОНВЕРСИИ ВОРОНКИ">
+          <Row label="Контент → переход в бот" value={(results.conv.reelsToBot * 100).toFixed(1) + '%'} />
+          <Row label="Бот → просмотр ЛМ" value={(results.conv.botToLM * 100).toFixed(0) + '%'} />
+          <Row label="ЛМ → покупка ТР" value={(results.conv.lmToTR * 100).toFixed(1) + '%'} />
+          <Row label="ТР → заявка на ФЛ" value={(results.conv.trToApplication * 100).toFixed(0) + '%'} />
+          <Row label="Заявка → покупка ФЛ" value={(results.conv.applicationToFL * 100).toFixed(0) + '%'} />
+          {results.conv.lmToApplicationDirect > 0 && <Row label="ЛМ/Контент → заявка напрямую" value={(results.conv.lmToApplicationDirect * 100).toFixed(1) + '%'} />}
+        </Section>
+        
+        {/* РЕЗУЛЬТАТЫ */}
+        <Section title="РЕЗУЛЬТАТЫ (в неделю)">
+          <Row label="Охватов" value={formatNum(results.weeklyReach)} />
+          <Row label="Подписок в бот" value={results.weeklyBotSubs.toFixed(1)} />
+          <Row label="Просмотров ЛМ" value={results.weeklyLMViews.toFixed(1)} />
+          <Row label="Продаж ТР" value={results.weeklyTRSales.toFixed(2)} />
+          <Row label="Заявок на ФЛ" value={results.weeklyApps.toFixed(2)} />
+          <Row label="Продаж ФЛ" value={results.weeklyFLSales.toFixed(3)} />
+          <Row label="Выручка в неделю" value={formatCur(results.weeklyRevTotal)} bold highlight />
+          <Row label="Выручка в месяц" value={formatCur(results.monthlyRev)} bold highlight />
+          <Row label="Прибыль в месяц" value={formatCur(results.monthlyProfit)} bold highlight />
+        </Section>
+        
+        {/* ЦЕЛИ */}
+        <Section title="СКОЛЬКО НУЖНО ДЛЯ ЦЕЛЕЙ">
+          {[
+            { name: 'Первая продажа ТР', reach: results.reachFirstTR },
+            { name: 'Первая продажа ФЛ', reach: results.reachFirstFL },
+            { name: '30 заявок на ФЛ', reach: results.reach30Apps },
+            { name: '100 000 ₽', reach: results.reach100k },
+            { name: '1 000 000 ₽', reach: results.reach1M },
+          ].map((g, i) => {
+            const pubs = results.r.avgReelsReach > 0 ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach)) : 1;
+            const weeks = results.r.avgReelsReach > 0 && results.r.reelsPerWeek > 0 ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach / results.r.reelsPerWeek)) : 1;
+            return <Row key={i} label={g.name} value={`${formatNum(g.reach)} охв / ${pubs} публ / ${weeks} нед`} />;
+          })}
+        </Section>
       </div>
       
-      {/* ПРОДУКТЫ */}
-      <Section title="ПРОДУКТЫ">
-        <Row label="Цена трипваера" value={formatCur(results.p.tripwirePrice)} />
-        <Row label="Цена флагмана" value={formatCur(results.p.flagshipPrice)} />
-        {showUpsell && <Row label="Допродажи" value={formatCur(results.p.upsellPrice)} />}
-        {showMaxSales && <Row label="Мест на ФЛ/мес" value={results.p.maxFlagshipSales} />}
-      </Section>
-      
-      {/* ОХВАТЫ */}
-      <Section title="ОХВАТЫ">
-        <Row label="Средний охват публикации" value={formatNum(results.r.avgReelsReach)} />
-        <Row label="Публикаций в неделю" value={results.r.reelsPerWeek} />
-        <Row label="Рост охватов/мес" value={results.r.monthlyGrowth + '%'} />
-      </Section>
-      
-      {/* КОНВЕРСИИ */}
-      <Section title="КОНВЕРСИИ ВОРОНКИ">
-        <Row label="Контент → переход в бот" value={(results.conv.reelsToBot * 100).toFixed(1) + '%'} />
-        <Row label="Бот → просмотр ЛМ" value={(results.conv.botToLM * 100).toFixed(0) + '%'} />
-        <Row label="ЛМ → покупка ТР" value={(results.conv.lmToTR * 100).toFixed(1) + '%'} />
-        <Row label="ТР → заявка на ФЛ" value={(results.conv.trToApplication * 100).toFixed(0) + '%'} />
-        <Row label="Заявка → покупка ФЛ" value={(results.conv.applicationToFL * 100).toFixed(0) + '%'} />
-        {results.conv.lmToApplicationDirect > 0 && <Row label="ЛМ/Контент → заявка напрямую" value={(results.conv.lmToApplicationDirect * 100).toFixed(1) + '%'} />}
-      </Section>
-      
-      {/* РЕЗУЛЬТАТЫ */}
-      <Section title="РЕЗУЛЬТАТЫ (в неделю)">
-        <Row label="Охватов" value={formatNum(results.weeklyReach)} />
-        <Row label="Подписок в бот" value={results.weeklyBotSubs.toFixed(1)} />
-        <Row label="Просмотров ЛМ" value={results.weeklyLMViews.toFixed(1)} />
-        <Row label="Продаж ТР" value={results.weeklyTRSales.toFixed(2)} />
-        <Row label="Заявок на ФЛ" value={results.weeklyApps.toFixed(2)} />
-        <Row label="Продаж ФЛ" value={results.weeklyFLSales.toFixed(3)} />
-        <Row label="Выручка в неделю" value={formatCur(results.weeklyRevTotal)} bold highlight />
-        <Row label="Выручка в месяц" value={formatCur(results.monthlyRev)} bold highlight />
-        <Row label="Прибыль в месяц" value={formatCur(results.monthlyProfit)} bold highlight />
-      </Section>
-      
-      {/* ЦЕЛИ */}
-      <Section title="СКОЛЬКО НУЖНО ДЛЯ ЦЕЛЕЙ">
-        {[
-          { name: 'Первая продажа ТР', reach: results.reachFirstTR },
-          { name: 'Первая продажа ФЛ', reach: results.reachFirstFL },
-          { name: '30 заявок на ФЛ', reach: results.reach30Apps },
-          { name: '100 000 ₽', reach: results.reach100k },
-          { name: '1 000 000 ₽', reach: results.reach1M },
-        ].map((g, i) => {
-          const pubs = results.r.avgReelsReach > 0 ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach)) : 1;
-          const weeks = results.r.avgReelsReach > 0 && results.r.reelsPerWeek > 0 ? Math.max(1, Math.ceil(g.reach / results.r.avgReelsReach / results.r.reelsPerWeek)) : 1;
-          return <Row key={i} label={g.name} value={`${formatNum(g.reach)} охв / ${pubs} публ / ${weeks} нед`} />;
-        })}
-      </Section>
-
-      
-      {/* РАСХОДЫ */}
-      <Section title="РАСХОДЫ">
-        {nonZeroFixed.length > 0 && (
-          <>
-            <div style={{ padding: '8px 16px', fontWeight: 'bold', color: COLORS.primary }}>Постоянные/мес:</div>
-            {nonZeroFixed.map((e, i) => <Row key={i} label={e.name} value={formatCur(num(e.amount))} />)}
-          </>
-        )}
-        {nonZeroVar.length > 0 && (
-          <>
-            <div style={{ padding: '8px 16px', fontWeight: 'bold', color: COLORS.primary, marginTop: 10 }}>Переменные:</div>
-            {nonZeroVar.map((e, i) => <Row key={i} label={e.name} value={num(e.percent) + '%'} />)}
-          </>
-        )}
-        {nonZeroStartup.length > 0 && (
-          <>
-            <div style={{ padding: '8px 16px', fontWeight: 'bold', color: COLORS.primary, marginTop: 10 }}>Стартовые:</div>
-            {nonZeroStartup.map((e, i) => <Row key={i} label={e.name} value={formatCur(num(e.amount))} />)}
-          </>
-        )}
-        <div style={{ marginTop: 10 }}>
-          <Row label="ИТОГО постоянные/мес" value={formatCur(results.totalFixed)} bold highlight />
-          <Row label="ИТОГО переменные" value={(results.totalVarPercent * 100).toFixed(1) + '%'} bold highlight />
-          <Row label="ИТОГО стартовые" value={formatCur(results.totalStartup)} bold highlight />
-          <Row label="Окупаемость" value={results.paybackWeeks === Infinity ? '—' : results.paybackWeeks + ' нед'} bold highlight />
+      {/* ===== СТРАНИЦА 2 ===== */}
+      <div className="pdf-page" style={{ padding: 40, minHeight: 1100, boxSizing: 'border-box', pageBreakInside: 'avoid' }}>
+        {/* РАСХОДЫ */}
+        <Section title="РАСХОДЫ">
+          {nonZeroFixed.length > 0 && (
+            <>
+              <div style={{ padding: '8px 16px', fontWeight: 'bold', color: COLORS.primary }}>Постоянные/мес:</div>
+              {nonZeroFixed.map((e, i) => <Row key={i} label={e.name} value={formatCur(num(e.amount || '0'))} />)}
+            </>
+          )}
+          {nonZeroVar.length > 0 && (
+            <>
+              <div style={{ padding: '8px 16px', fontWeight: 'bold', color: COLORS.primary, marginTop: 10 }}>Переменные:</div>
+              {nonZeroVar.map((e, i) => <Row key={i} label={e.name} value={num(e.percent || '0') + '%'} />)}
+            </>
+          )}
+          {nonZeroStartup.length > 0 && (
+            <>
+              <div style={{ padding: '8px 16px', fontWeight: 'bold', color: COLORS.primary, marginTop: 10 }}>Стартовые:</div>
+              {nonZeroStartup.map((e, i) => <Row key={i} label={e.name} value={formatCur(num(e.amount || '0'))} />)}
+            </>
+          )}
+          <div style={{ marginTop: 10 }}>
+            <Row label="ИТОГО постоянные/мес" value={formatCur(results.totalFixed)} bold highlight />
+            <Row label="ИТОГО переменные" value={(results.totalVarPercent * 100).toFixed(1) + '%'} bold highlight />
+            <Row label="ИТОГО стартовые" value={formatCur(results.totalStartup)} bold highlight />
+            <Row label="Окупаемость" value={results.paybackWeeks === Infinity ? '—' : results.paybackWeeks + ' нед'} bold highlight />
+          </div>
+        </Section>
+        
+        {/* СЦЕНАРИИ */}
+        <Section title="ПРОГНОЗ НА ГОД">
+          <ScenarioBlock name="СЦЕНАРИЙ: КОНСЕРВАТИВНЫЙ" data={results.scenarios.conservative} color="#F97316" />
+          <ScenarioBlock name="СЦЕНАРИЙ: РЕАЛИСТИЧНЫЙ" data={results.scenarios.realistic} color={COLORS.primary} />
+          <ScenarioBlock name="СЦЕНАРИЙ: ОПТИМИСТИЧНЫЙ" data={results.scenarios.optimistic} color="#22C55E" />
+        </Section>
+        
+        {/* Footer */}
+        <div style={{ marginTop: 40, paddingTop: 20, borderTop: `2px solid ${COLORS.primary}`, textAlign: 'center' }}>
+          <div style={{ color: '#666', fontSize: 12, marginBottom: 5 }}>Рассчитано с помощью калькулятора Double Sales</div>
+          <a href="https://julietsapova.com/" style={{ color: COLORS.primary, fontSize: 12, fontWeight: 'bold', textDecoration: 'none' }}>@julie_tsapova | julietsapova.com</a>
         </div>
-      </Section>
-      
-      {/* СЦЕНАРИИ */}
-      <Section title="ПРОГНОЗ НА ГОД">
-        <ScenarioBlock name="СЦЕНАРИЙ: КОНСЕРВАТИВНЫЙ" data={results.scenarios.conservative} color="#F97316" />
-        <ScenarioBlock name="СЦЕНАРИЙ: РЕАЛИСТИЧНЫЙ" data={results.scenarios.realistic} color={COLORS.primary} />
-        <ScenarioBlock name="СЦЕНАРИЙ: ОПТИМИСТИЧНЫЙ" data={results.scenarios.optimistic} color="#22C55E" />
-      </Section>
-      
-      {/* Footer */}
-      <div style={{ marginTop: 40, paddingTop: 20, borderTop: `2px solid ${COLORS.primary}`, textAlign: 'center' }}>
-        <div style={{ color: '#666', fontSize: 12, marginBottom: 5 }}>Рассчитано с помощью калькулятора Double Sales</div>
-        <a href="https://julietsapova.com/" style={{ color: COLORS.primary, fontSize: 12, fontWeight: 'bold', textDecoration: 'none' }}>@julie_tsapova | julietsapova.com</a>
       </div>
     </div>
   );
 });
+
+PDFReport.displayName = 'PDFReport';
 
 const DoubleSalesCalculator = () => {
   const [products, setProducts] = useState({ tripwirePrice: '3000', flagshipPrice: '100000', upsellPrice: '0', maxFlagshipSales: '999' });
   const [conversions, setConversions] = useState({ reelsToBot: '2', botToLM: '70', lmToTR: '5', trToApplication: '30', applicationToFL: '20', lmToApplicationDirect: '1' });
   const [reach, setReach] = useState({ avgReelsReach: '3000', reelsPerWeek: '3', monthlyGrowth: '10' });
 
-  const [fixedExpenses, setFixedExpenses] = useState([
+  const [fixedExpenses, setFixedExpenses] = useState<Expense[]>([
     { id: 1, name: 'Платформа для курсов', amount: '2500', hint: 'GetCourse, Prodamus.XL' },
     { id: 2, name: 'Сервис для рассылки', amount: '2999', hint: 'SaleBot, BotHelp' },
     { id: 3, name: 'Подписки', amount: '0', hint: 'Нейросети, приложения, сервисы' },
@@ -230,7 +298,7 @@ const DoubleSalesCalculator = () => {
     { id: 7, name: 'Прочие', amount: '0', hint: 'Другие расходы' },
   ]);
 
-  const [variableExpenses, setVariableExpenses] = useState([
+  const [variableExpenses, setVariableExpenses] = useState<Expense[]>([
     { id: 1, name: 'Комиссия платёжки', percent: '3.5', hint: '2.5-5%' },
     { id: 2, name: 'Комиссия за рассрочки', percent: '0', hint: 'Считайте средний показатель' },
     { id: 3, name: 'Налоги', percent: '6', hint: '4-15%' },
@@ -238,7 +306,7 @@ const DoubleSalesCalculator = () => {
     { id: 5, name: 'Прочие %', percent: '0', hint: 'Другие %' },
   ]);
 
-  const [startupExpenses, setStartupExpenses] = useState([
+  const [startupExpenses, setStartupExpenses] = useState<Expense[]>([
     { id: 1, name: 'Оборудование', amount: '0', hint: 'Свет, микрофон' },
     { id: 2, name: 'Дизайн', amount: '0', hint: 'Canva + шаблоны' },
     { id: 3, name: 'Настройка воронки', amount: '5000', hint: 'Делайте сами!' },
@@ -249,21 +317,21 @@ const DoubleSalesCalculator = () => {
 
   const [activeTab, setActiveTab] = useState('main');
   const [calculated, setCalculated] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState<Results | null>(null);
   const [generating, setGenerating] = useState(false);
-  const pdfRef = useRef(null);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [activeTab]);
 
-  const num = (val) => parseFloat(String(val).replace(',', '.').replace(/[^\d.-]/g, '')) || 0;
+  const num = (val: string | number) => parseFloat(String(val).replace(',', '.').replace(/[^\d.-]/g, '')) || 0;
 
   const calculate = () => {
     const p = { tripwirePrice: num(products.tripwirePrice), flagshipPrice: num(products.flagshipPrice), upsellPrice: num(products.upsellPrice), maxFlagshipSales: num(products.maxFlagshipSales) || 999 };
     const conv = { reelsToBot: num(conversions.reelsToBot)/100, botToLM: num(conversions.botToLM)/100, lmToTR: num(conversions.lmToTR)/100, trToApplication: num(conversions.trToApplication)/100, applicationToFL: num(conversions.applicationToFL)/100, lmToApplicationDirect: num(conversions.lmToApplicationDirect)/100 };
     const r = { avgReelsReach: num(reach.avgReelsReach), reelsPerWeek: num(reach.reelsPerWeek), monthlyGrowth: num(reach.monthlyGrowth) };
-    const totalFixed = fixedExpenses.reduce((sum, e) => sum + num(e.amount), 0);
-    const totalVarPercent = variableExpenses.reduce((sum, e) => sum + num(e.percent), 0) / 100;
-    const totalStartup = startupExpenses.reduce((sum, e) => sum + num(e.amount), 0);
+    const totalFixed = fixedExpenses.reduce((sum, e) => sum + num(e.amount || '0'), 0);
+    const totalVarPercent = variableExpenses.reduce((sum, e) => sum + num(e.percent || '0'), 0) / 100;
+    const totalStartup = startupExpenses.reduce((sum, e) => sum + num(e.amount || '0'), 0);
     const weeklyReach = r.avgReelsReach * r.reelsPerWeek;
     const monthlyReachBase = weeklyReach * 4;
     const weeklyBotSubs = weeklyReach * conv.reelsToBot;
@@ -280,9 +348,9 @@ const DoubleSalesCalculator = () => {
     const overallToFL = conv.reelsToBot * conv.botToLM * (conv.lmToTR * conv.trToApplication + conv.lmToApplicationDirect) * conv.applicationToFL;
     const convToApp = conv.reelsToBot * conv.botToLM * (conv.lmToTR * conv.trToApplication + conv.lmToApplicationDirect);
     const revPerReach = overallToTR * p.tripwirePrice + overallToFL * (p.flagshipPrice + p.upsellPrice);
-    const calcScenario = (mult) => {
+    const calcScenario = (mult: number): ScenarioData => {
       const growthRate = 1 + (r.monthlyGrowth / 100);
-      const months = [];
+      const months: ScenarioData['months'] = [];
       let totalTR = 0, totalFL = 0, totalRev = 0;
       for (let m = 1; m <= 12; m++) {
         const mReach = monthlyReachBase * Math.pow(growthRate, m - 1);
@@ -304,141 +372,71 @@ const DoubleSalesCalculator = () => {
   };
 
   const generatePDF = async () => {
-  if (!results || !pdfRef.current) return;
-  setGenerating(true);
-
-  const PAGE_W = 794;
-  const PAGE_H = Math.round(PAGE_W * (297 / 210)); // ~1123
-  const PAD = 40;          // как в PDFReport padding: 40
-  const FOOTER_H = 34;     // место под нумерацию
-
-  try {
-    const html2canvas = (await import('html2canvas')).default;
-    const { jsPDF } = await import('jspdf');
-
-    const src = pdfRef.current;
-
-    // Offscreen зона, чтобы не ломать UI
-    const offscreen = document.createElement('div');
-    offscreen.style.position = 'fixed';
-    offscreen.style.left = '-100000px';
-    offscreen.style.top = '0';
-    offscreen.style.width = `${PAGE_W}px`;
-    offscreen.style.background = 'white';
-    offscreen.style.zIndex = '-1';
-    document.body.appendChild(offscreen);
-
-    // Клонируем отчёт
-    const reportClone = src.cloneNode(true);
-    offscreen.appendChild(reportClone);
-
-    // "Атомы" для переноса — всё с data-pdf-block
-    const blocks = Array.from(reportClone.querySelectorAll('[data-pdf-block]'));
-
-    if (blocks.length === 0) {
-      throw new Error('PDF blocks not found. Add data-pdf-block attributes.');
-    }
-
-    // очищаем клон, будем собирать страницы
-    reportClone.innerHTML = '';
-
-    const pages = [];
-
-    const makePage = () => {
-      const page = document.createElement('div');
-      page.style.width = `${PAGE_W}px`;
-      page.style.height = `${PAGE_H}px`;
-      page.style.background = 'white';
-      page.style.position = 'relative';
-      page.style.overflow = 'hidden';
-
-      const content = document.createElement('div');
-      content.style.position = 'absolute';
-      content.style.left = '0';
-      content.style.top = '0';
-      content.style.right = '0';
-      content.style.bottom = `${FOOTER_H}px`;
-      content.style.overflow = 'hidden';
-      content.style.padding = `${PAD}px`;
-
-      page.appendChild(content);
-
-      offscreen.appendChild(page);
-      pages.push({ page, content });
-      return { page, content };
-    };
-
-    const fits = (contentEl) => contentEl.scrollHeight <= contentEl.clientHeight;
-
-    let { content } = makePage();
-
-    for (const block of blocks) {
-      content.appendChild(block);
-
-      if (!fits(content)) {
-        content.removeChild(block);
-
-        // если блок выше страницы — кладём как есть, иначе будет вечный цикл
-        if (content.childElementCount === 0) {
-          content.appendChild(block);
-        } else {
-          ({ content } = makePage());
-          content.appendChild(block);
+    if (!results || !pdfRef.current) return;
+    setGenerating(true);
+    
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+      
+      const element = pdfRef.current;
+      
+      // Находим все страницы PDF
+      const pages = element.querySelectorAll('.pdf-page');
+      
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // Рендерим каждую страницу отдельно
+      for (let i = 0; i < pages.length; i++) {
+        const pageElement = pages[i] as HTMLElement;
+        
+        // Рендерим страницу в canvas
+        const canvas = await html2canvas(pageElement, { 
+          scale: 2, 
+          useCORS: true, 
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const ratio = pdfWidth / (imgWidth / 2); // делим на 2 из-за scale: 2
+        const scaledHeight = (imgHeight / 2) * ratio;
+        
+        if (i > 0) {
+          pdf.addPage();
         }
+        
+        // Добавляем изображение страницы
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, scaledHeight);
+        
+        // Добавляем нумерацию страниц внизу
+        // Рисуем фон для номера страницы
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(pdfWidth - 45, pdfHeight - 15, 40, 10, 'F');
+        
+        // Добавляем номер страницы (только цифры, чтобы избежать проблем с кириллицей)
+        pdf.setFontSize(10);
+        pdf.setTextColor(150, 150, 150);
+        const pageText = `${i + 1} / ${pages.length}`;
+        pdf.text(pageText, pdfWidth - 15, pdfHeight - 8, { align: 'right' });
       }
+      
+      pdf.save('Double_Sales_Расчёт.pdf');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      alert('Ошибка при создании PDF. Попробуйте ещё раз.');
     }
-
-    // футеры (кириллица норм, т.к. это HTML, а не pdf.text)
-    const totalPages = pages.length;
-    pages.forEach((p, idx) => {
-      const footer = document.createElement('div');
-      footer.style.position = 'absolute';
-      footer.style.left = '0';
-      footer.style.right = '0';
-      footer.style.bottom = '10px';
-      footer.style.textAlign = 'right';
-      footer.style.paddingRight = '40px';
-      footer.style.fontFamily = 'Arial, sans-serif';
-      footer.style.fontSize = '10px';
-      footer.style.color = 'rgb(150,150,150)';
-      footer.textContent = `Страница ${idx + 1} из ${totalPages}`;
-      p.page.appendChild(footer);
-    });
-
-    // PDF
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-
-    for (let i = 0; i < pages.length; i++) {
-      const canvas = await html2canvas(pages[i].page, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-      });
-
-      const ratio = pdfWidth / canvas.width;
-      const drawHeight = canvas.height * ratio;
-
-      if (i > 0) pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, drawHeight);
-    }
-
-    pdf.save('Double_Sales_Расчёт.pdf');
-
-    document.body.removeChild(offscreen);
-  } catch (error) {
-    console.error('PDF generation error:', error);
-    alert('Ошибка при создании PDF. Попробуйте ещё раз.');
-  }
-
-  setGenerating(false);
-};
-
+    
+    setGenerating(false);
+  };
 
   const resetCalc = () => setCalculated(false);
-  const formatNum = (n) => !isFinite(n) ? '—' : n >= 1e6 ? (n/1e6).toFixed(1)+'М' : n >= 1e3 ? (n/1e3).toFixed(1)+'К' : Math.round(n).toLocaleString('ru');
-  const formatCur = (n) => !isFinite(n) ? '—' : new Intl.NumberFormat('ru-RU').format(Math.round(n)) + ' ₽';
+  const formatNum = (n: number) => !isFinite(n) ? '—' : n >= 1e6 ? (n/1e6).toFixed(1)+'М' : n >= 1e3 ? (n/1e3).toFixed(1)+'К' : Math.round(n).toLocaleString('ru');
+  const formatCur = (n: number) => !isFinite(n) ? '—' : new Intl.NumberFormat('ru-RU').format(Math.round(n)) + ' ₽';
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F0F7FC' }}>
@@ -507,7 +505,7 @@ const DoubleSalesCalculator = () => {
                       {[{ l: 'Охваты', v: results.weeklyReach }, { l: 'В бот', v: results.weeklyBotSubs }, { l: 'ЛМ', v: results.weeklyLMViews }, { l: 'ТР', v: results.weeklyTRSales }, { l: 'Заявок', v: results.weeklyApps }, { l: 'ФЛ', v: results.weeklyFLSales, hl: true }].map((item, idx) => (
                         <React.Fragment key={idx}>
                           {idx > 0 && <ChevronRight size={16} style={{ color: COLORS.primary + '40' }} />}
-                          <div className="px-3 py-2 rounded-lg" style={{ backgroundColor: item.hl ? COLORS.primary : 'white', color: item.hl ? 'white' : COLORS.primary }}>
+                          <div className="px-3 py-2 rounded-lg" style={{ backgroundColor: 'hl' in item && item.hl ? COLORS.primary : 'white', color: 'hl' in item && item.hl ? 'white' : COLORS.primary }}>
                             <span style={{ opacity: 0.7 }}>{item.l}</span><span className="ml-2 font-bold">{formatNum(item.v)}</span>
                           </div>
                         </React.Fragment>
@@ -573,9 +571,9 @@ const DoubleSalesCalculator = () => {
               <section className="rounded-3xl p-6 text-white" style={{ backgroundColor: COLORS.primary }}>
                 <h2 className="text-xl font-bold mb-6">Итоги</h2>
                 <div className="grid sm:grid-cols-4 gap-4">
-                  <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}><p className="text-sm" style={{ opacity: 0.8 }}>Постоянные/мес</p><p className="text-xl font-bold">{formatCur(results.totalFixed)}</p></div>
-                  <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}><p className="text-sm" style={{ opacity: 0.8 }}>Переменные</p><p className="text-xl font-bold">{(results.totalVarPercent * 100).toFixed(1)}%</p></div>
-                  <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}><p className="text-sm" style={{ opacity: 0.8 }}>Стартовые</p><p className="text-xl font-bold">{formatCur(results.totalStartup)}</p></div>
+                  <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}><p className="text-sm" style={{ opacity: 0.8 }}>Постоянные/мес</p><p className="text-xl font-bold">{formatCur(results.totalFixed)}</p></div>
+                  <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}><p className="text-sm" style={{ opacity: 0.8 }}>Переменные</p><p className="text-xl font-bold">{(results.totalVarPercent * 100).toFixed(1)}%</p></div>
+                  <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}><p className="text-sm" style={{ opacity: 0.8 }}>Стартовые</p><p className="text-xl font-bold">{formatCur(results.totalStartup)}</p></div>
                   <div className="rounded-2xl p-4" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}><p className="text-sm" style={{ opacity: 0.8 }}>Окупаемость</p><p className="text-xl font-bold">{results.paybackWeeks === Infinity ? '—' : results.paybackWeeks} нед</p></div>
                 </div>
               </section>
@@ -590,7 +588,7 @@ const DoubleSalesCalculator = () => {
                 <div className="p-4 rounded-xl" style={{ backgroundColor: COLORS.accent }}>
                   <p className="text-sm" style={{ color: COLORS.primary }}><strong>Рост:</strong> охваты +{results.r.monthlyGrowth}%/мес. Старт: {formatNum(results.monthlyReachBase)} → год: {formatNum(results.monthlyReachBase * Math.pow(1 + results.r.monthlyGrowth/100, 11))}</p>
                 </div>
-                {[{ name: 'Сценарий: Консервативный', key: 'conservative', color: '#F97316' }, { name: 'Сценарий: Реалистичный', key: 'realistic', color: COLORS.primary }, { name: 'Сценарий: Оптимистичный', key: 'optimistic', color: '#22C55E' }].map((sc) => {
+                {[{ name: 'Сценарий: Консервативный', key: 'conservative' as const, color: '#F97316' }, { name: 'Сценарий: Реалистичный', key: 'realistic' as const, color: COLORS.primary }, { name: 'Сценарий: Оптимистичный', key: 'optimistic' as const, color: '#22C55E' }].map((sc) => {
                   const data = results.scenarios[sc.key];
                   return (
                     <section key={sc.key} className="bg-white rounded-3xl shadow-xl overflow-hidden">
@@ -707,9 +705,6 @@ const DoubleSalesCalculator = () => {
         <PDFReport 
           ref={pdfRef}
           results={results}
-          products={products}
-          conversions={conversions}
-          reach={reach}
           fixedExpenses={fixedExpenses}
           variableExpenses={variableExpenses}
           startupExpenses={startupExpenses}
