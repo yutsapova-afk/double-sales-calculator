@@ -389,7 +389,7 @@ if (imgHeight <= (maxPageY - margin)) {
       };
       
       // сколько строк расходов максимум на 1 странице
-      const EXP_ROWS_PER_PAGE = 14;
+      const EXP_ROWS_PER_PAGE = 20;
 
     return (
       <div ref={ref} style={{ width: 794, padding: 20, backgroundColor: 'white', fontFamily: 'Arial, sans-serif', fontSize: 12, color: '#333' }}>
